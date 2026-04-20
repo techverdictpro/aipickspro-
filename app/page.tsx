@@ -126,4 +126,4 @@ export default function HomePage() {
               <div className="pick-match">{p.match}</div>
               <div className="pick-bottom">
                 <span className="pick-tip">{p.tip}</span>
-                <span className="pi
+<span className="pick-odds">{p.odds}</span>
