@@ -184,7 +184,7 @@ export default function TipsTodayPage() {
       <div className="main">
         <div className="tips-list">
           {tips.map((t) => (
-            <div key={t.match} className="tip-card">
+            <div key={t.home} className="tip-card">
               <div className="tip-header">
                 <div className="tip-sport">{t.emoji} {t.league}</div>
                 <div className="tip-time">{t.time}</div>
