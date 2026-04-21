@@ -49,11 +49,11 @@ export default function HomePage() {
         .section-title { font-size: 26px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.02em; }
         .section-link { font-size: 12px; color: #e8f042; font-weight: 700; letter-spacing: 0.08em; }
         .picks-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-        .pick-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 20px; cursor: pointer; transition: border-color 0.2s; }
+        .pick-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 20px; cursor: pointer; transition: border-color 0.2s; display: block; }
         .pick-card:hover { border-color: rgba(232,240,66,0.3); }
         .pick-card-featured { background: rgba(232,240,66,0.03); border-color: rgba(232,240,66,0.35); }
         .pick-sport { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8f99; margin-bottom: 8px; }
-        .pick-match { font-size: 15px; font-weight: 600; margin-bottom: 14px; line-height: 1.3; }
+        .pick-match { font-size: 15px; font-weight: 600; margin-bottom: 14px; line-height: 1.3; color: #f0ede6; }
         .pick-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
         .pick-tip { background: rgba(46,204,138,0.1); color: #2ecc8a; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 3px; }
         .pick-odds { font-size: 26px; font-weight: 900; color: #e8f042; }
@@ -91,22 +91,22 @@ export default function HomePage() {
       <nav>
         <div className="logo">Ai<span className="logo-accent">Picks</span>Pro</div>
         <div className="nav-links">
-          <a href="#">Football</a>
-          <a href="#">Basketball</a>
-          <a href="#">Tennis</a>
-          <a href="#">NFL</a>
-          <a href="#">Today&apos;s Tips</a>
-          <a href="#">Stats</a>
+          <a href="/football/">Football</a>
+          <a href="/basketball/">Basketball</a>
+          <a href="/tennis/">Tennis</a>
+          <a href="/nfl/">NFL</a>
+          <a href="/tips-today/">Today&apos;s Tips</a>
+          <a href="/stats/">Stats</a>
         </div>
-        <a href="#" className="nav-cta">FREE PICKS</a>
+        <a href="/tips-today/" className="nav-cta">FREE PICKS</a>
       </nav>
 
       <div className="hero">
         <div className="hero-label">● AI-Powered · Live Analysis · Updated Daily</div>
         <h1>The <span className="hero-accent">Smarter</span><br />Way to Bet</h1>
         <p>Our AI agents analyse thousands of data points — form, injuries, head-to-head, market movement — to deliver daily picks for football, NBA, tennis and more.</p>
-        <a href="#" className="btn-primary">TODAY&apos;S FREE TIPS →</a>
-        <a href="#" className="btn-secondary">View Track Record</a>
+        <a href="/tips-today/" className="btn-primary">TODAY&apos;S FREE TIPS →</a>
+        <a href="/track-record/" className="btn-secondary">View Track Record</a>
         <div className="hero-stats">
           <div><div className="stat-val">74%</div><div className="stat-label">Win rate (last 90 days)</div></div>
           <div><div className="stat-val">+2,840</div><div className="stat-label">Units profit (2025)</div></div>
@@ -131,11 +131,11 @@ export default function HomePage() {
       <div className="section">
         <div className="section-header">
           <div className="section-title">Today&apos;s Top Picks</div>
-          <a href="#" className="section-link">ALL PICKS →</a>
+          <a href="/tips-today/" className="section-link">ALL PICKS →</a>
         </div>
         <div className="picks-grid">
           {picks.map((p) => (
-            <div key={p.match} className={p.featured ? 'pick-card pick-card-featured' : 'pick-card'}>
+            <a href="/tips-today/" key={p.match} className={p.featured ? 'pick-card pick-card-featured' : 'pick-card'}>
               <div className="pick-sport">{p.sport}</div>
               <div className="pick-match">{p.match}</div>
               <div className="pick-row">
@@ -150,7 +150,7 @@ export default function HomePage() {
               <div className="conf-text">
                 {p.conf >= 5 ? 'Very high confidence' : p.conf >= 4 ? 'High confidence' : 'Medium confidence'}
               </div>
-            </div>
+            </a>
           ))}
         </div>
 
@@ -173,18 +173,18 @@ export default function HomePage() {
           <div>
             <div className="footer-col-title">Sports</div>
             <div className="footer-links">
-              <a href="#">Football</a>
-              <a href="#">Basketball</a>
-              <a href="#">Tennis</a>
-              <a href="#">NFL</a>
+              <a href="/football/">Football</a>
+              <a href="/basketball/">Basketball</a>
+              <a href="/tennis/">Tennis</a>
+              <a href="/nfl/">NFL</a>
               <a href="#">Ice Hockey</a>
             </div>
           </div>
           <div>
             <div className="footer-col-title">Resources</div>
             <div className="footer-links">
-              <a href="#">Today&apos;s Tips</a>
-              <a href="#">Track Record</a>
+              <a href="/tips-today/">Today&apos;s Tips</a>
+              <a href="/track-record/">Track Record</a>
               <a href="#">Bookmaker Reviews</a>
               <a href="#">Betting Guides</a>
             </div>
