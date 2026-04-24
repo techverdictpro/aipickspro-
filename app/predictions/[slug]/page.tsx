@@ -2,10 +2,6 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 
-interface Props {
-  params: { slug: string }
-}
-
 function getArticle(slug: string) {
   const categories = ['football', 'basketball', 'tennis', 'nfl', 'general']
   for (const category of categories) {
@@ -32,8 +28,13 @@ export async function generateStaticParams() {
   return slugs
 }
 
-export default function PredictionPage({ params }: Props) {
-  const article = getArticle(params.slug)
+export default async function PredictionPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
+  const article = getArticle(slug)
 
   if (!article) {
     return (

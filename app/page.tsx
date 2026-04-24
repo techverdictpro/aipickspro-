@@ -96,7 +96,6 @@ export default function HomePage() {
           <a href="/tennis/">Tennis</a>
           <a href="/nfl/">NFL</a>
           <a href="/tips-today/">Today&apos;s Tips</a>
-          <a href="/stats/">Stats</a>
         </div>
         <a href="/tips-today/" className="nav-cta">FREE PICKS</a>
       </nav>
@@ -106,7 +105,6 @@ export default function HomePage() {
         <h1>The <span className="hero-accent">Smarter</span><br />Way to Bet</h1>
         <p>Our AI agents analyse thousands of data points — form, injuries, head-to-head, market movement — to deliver daily picks for football, NBA, tennis and more.</p>
         <a href="/tips-today/" className="btn-primary">TODAY&apos;S FREE TIPS →</a>
-        <a href="/track-record/" className="btn-secondary">View Track Record</a>
         <div className="hero-stats">
           <div><div className="stat-val">74%</div><div className="stat-label">Win rate (last 90 days)</div></div>
           <div><div className="stat-val">+2,840</div><div className="stat-label">Units profit (2025)</div></div>
@@ -184,7 +182,6 @@ export default function HomePage() {
             <div className="footer-col-title">Resources</div>
             <div className="footer-links">
               <a href="/tips-today/">Today&apos;s Tips</a>
-              <a href="/track-record/">Track Record</a>
               <a href="#">Bookmaker Reviews</a>
               <a href="#">Betting Guides</a>
             </div>
