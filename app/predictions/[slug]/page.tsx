@@ -3,7 +3,7 @@ import path from 'path'
 import matter from 'gray-matter'
 
 interface Props {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 const AFFILIATES = [
@@ -41,8 +41,9 @@ export async function generateStaticParams() {
   return slugs
 }
 
-export default function PredictionPage({ params }: Props) {
-  const article = getArticle(params.slug)
+export default async function PredictionPage({ params }: Props) {
+  const { slug } = await params
+  const article = getArticle(slug)
 
   if (!article) {
     return (
