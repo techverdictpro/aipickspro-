@@ -2,6 +2,19 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 
+interface Props {
+  params: { slug: string }
+}
+
+const AFFILIATES = [
+  { name: 'Bet365', url: 'https://www.bet365.com', bonus: 'Up to £100 Welcome Bonus', regions: 'UK & Europe', color: '#00a651' },
+  { name: 'William Hill', url: 'https://www.williamhill.com', bonus: '£30 Free Bet', regions: 'UK & Europe', color: '#6c2d8a' },
+  { name: 'DraftKings', url: 'https://www.draftkings.com', bonus: '$200 Bonus Bets', regions: 'USA', color: '#53d337' },
+  { name: 'FanDuel', url: 'https://www.fanduel.com', bonus: '$1000 No Sweat First Bet', regions: 'USA', color: '#1493ff' },
+  { name: 'Betway', url: 'https://www.betway.com', bonus: '€30 Free Bet', regions: 'Europe', color: '#00a0ff' },
+  { name: 'Unibet', url: 'https://www.unibet.com', bonus: '€40 Welcome Bonus', regions: 'Europe', color: '#147b45' },
+]
+
 function getArticle(slug: string) {
   const categories = ['football', 'basketball', 'tennis', 'nfl', 'general']
   for (const category of categories) {
@@ -28,13 +41,8 @@ export async function generateStaticParams() {
   return slugs
 }
 
-export default async function PredictionPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>
-}) {
-  const { slug } = await params
-  const article = getArticle(slug)
+export default function PredictionPage({ params }: Props) {
+  const article = getArticle(params.slug)
 
   if (!article) {
     return (
@@ -69,7 +77,7 @@ export default async function PredictionPage({
         .nav-links { display: flex; gap: 24px; font-size: 13px; color: #8a8f99; }
         .nav-links a:hover { color: #fff; }
         .nav-cta { background: #e8f042; color: #000; padding: 8px 20px; border-radius: 4px; font-size: 13px; font-weight: 800; }
-        .page-wrap { max-width: 800px; margin: 0 auto; padding: 48px 32px 80px; }
+        .page-wrap { max-width: 860px; margin: 0 auto; padding: 48px 32px 80px; }
         .breadcrumb { font-size: 12px; color: #8a8f99; margin-bottom: 24px; }
         .breadcrumb a:hover { color: #fff; }
         .article-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -85,12 +93,41 @@ export default async function PredictionPage({
         .conf-dots { display: flex; gap: 4px; align-items: center; }
         .cdot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.1); }
         .bet-btn { background: #e8f042; color: #000; font-size: 14px; font-weight: 800; padding: 12px 24px; border-radius: 4px; display: inline-block; }
-        .article-body { font-size: 17px; line-height: 1.8; color: #d0cdc6; }
+        .article-body { font-size: 17px; line-height: 1.8; color: #d0cdc6; margin-bottom: 40px; }
         .article-body p { margin-bottom: 20px; }
-        .sidebar-ad { background: rgba(232,240,66,0.04); border: 1px solid rgba(232,240,66,0.2); border-radius: 8px; padding: 20px; margin-top: 32px; }
+        .article-body p:last-child { color: #f0ede6; font-weight: 600; border-left: 3px solid #e8f042; padding-left: 16px; }
+
+        /* AFFILIATE SECTION */
+        .aff-section { margin: 40px 0; }
+        .aff-section-title { font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+        .aff-section-sub { font-size: 13px; color: #8a8f99; margin-bottom: 20px; }
+        .aff-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .aff-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px; transition: border-color 0.2s; }
+        .aff-card:hover { border-color: rgba(255,255,255,0.2); }
+        .aff-card-top { display: flex; align-items: center; justify-content: space-between; }
+        .aff-card-name { font-size: 16px; font-weight: 800; }
+        .aff-card-region { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8f99; background: rgba(255,255,255,0.05); padding: 3px 8px; border-radius: 2px; }
+        .aff-card-bonus { font-size: 13px; color: #2ecc8a; font-weight: 600; }
+        .aff-card-btn { display: block; text-align: center; background: #e8f042; color: #000; font-size: 12px; font-weight: 800; padding: 8px; border-radius: 4px; letter-spacing: 0.05em; }
+        .aff-card-btn:hover { background: #c8d435; }
+        .aff-disclaimer { font-size: 10px; color: #8a8f99; margin-top: 12px; line-height: 1.5; }
+
+        /* INLINE CTA */
+        .inline-cta { background: linear-gradient(90deg, rgba(26,15,0,0.9), rgba(10,15,26,0.9)); border: 1px solid rgba(255,255,255,0.07); border-left: 3px solid #e8f042; border-radius: 6px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; margin: 32px 0; gap: 20px; flex-wrap: wrap; }
+        .inline-cta-text { font-size: 18px; font-weight: 800; }
+        .inline-cta-sub { font-size: 12px; color: #8a8f99; margin-top: 4px; }
+
         .disclaimer { font-size: 11px; color: #8a8f99; margin-top: 32px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.07); line-height: 1.6; }
         .rg-bar { background: rgba(232,69,69,0.05); border-top: 1px solid rgba(232,69,69,0.15); padding: 12px 32px; text-align: center; font-size: 11px; color: #8a8f99; margin-top: 60px; }
-        @media (max-width: 600px) { .article-title { font-size: 24px; } .nav-links { display: none; } }
+        @media (max-width: 700px) {
+          .article-title { font-size: 24px; }
+          .nav-links { display: none; }
+          .aff-grid { grid-template-columns: 1fr 1fr; }
+          .pick-box { flex-direction: column; }
+        }
+        @media (max-width: 480px) {
+          .aff-grid { grid-template-columns: 1fr; }
+        }
       `}</style>
 
       <nav>
@@ -140,7 +177,9 @@ export default async function PredictionPage({
               <span style={{ fontSize: '13px', fontWeight: 700 }}>{confText(article.confidence)}</span>
             </div>
           </div>
-          <a href="#" className="bet-btn">BET @ {article.bookmaker} &rarr;</a>
+          <a href={AFFILIATES[0].url} target="_blank" rel="noopener noreferrer" className="bet-btn">
+            BET @ {article.bookmaker} &rarr;
+          </a>
         </div>
 
         <div className="article-body">
@@ -149,19 +188,48 @@ export default async function PredictionPage({
           ))}
         </div>
 
-        <div className="sidebar-ad">
-          <div style={{ fontSize: '16px', fontWeight: 800, marginBottom: '8px' }}>Best odds at {article.bookmaker}</div>
-          <div style={{ fontSize: '12px', color: '#8a8f99', marginBottom: '14px' }}>New customers only. 18+ T&Cs apply.</div>
-          <a href="#" className="bet-btn" style={{ fontSize: '13px', padding: '10px 20px' }}>CLAIM BONUS &rarr;</a>
+        {/* INLINE CTA */}
+        <div className="inline-cta">
+          <div>
+            <div className="inline-cta-text">🎯 Get the best odds at Bet365</div>
+            <div className="inline-cta-sub">Up to £100 Welcome Bonus · New customers only · 18+ T&Cs apply</div>
+          </div>
+          <a href="https://www.bet365.com" target="_blank" rel="noopener noreferrer" className="bet-btn">
+            CLAIM BONUS &rarr;
+          </a>
+        </div>
+
+        {/* AFFILIATE GRID */}
+        <div className="aff-section">
+          <div className="aff-section-title">🏆 Best Bookmakers for This Match</div>
+          <div className="aff-section-sub">Compare bonuses and claim your welcome offer</div>
+          <div className="aff-grid">
+            {AFFILIATES.map((bm) => (
+              <div key={bm.name} className="aff-card">
+                <div className="aff-card-top">
+                  <div className="aff-card-name" style={{ color: bm.color }}>{bm.name}</div>
+                  <div className="aff-card-region">{bm.regions}</div>
+                </div>
+                <div className="aff-card-bonus">{bm.bonus}</div>
+                <a href={bm.url} target="_blank" rel="noopener noreferrer" className="aff-card-btn">
+                  CLAIM OFFER &rarr;
+                </a>
+              </div>
+            ))}
+          </div>
+          <div className="aff-disclaimer">
+            * 18+ only. Gambling involves risk. New customers only. Bonus terms and conditions apply. Please gamble responsibly. If you have a gambling problem, call the National Gambling Helpline: 0808 8020 133 (UK) or visit GamCare.org.uk. For US customers: 1-800-GAMBLER.
+          </div>
         </div>
 
         <div className="disclaimer">
-          Odds correct at time of publication. This represents the opinion of our analysts only. Please gamble responsibly. 18+ only.
+          Odds correct at time of publication and subject to change. This article represents the opinion of our analysts only and should not be taken as financial advice. AiPicksPro may receive commission from bookmakers listed on this page.
         </div>
       </div>
 
       <div className="rg-bar">
-        <strong style={{ color: '#fff' }}>Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss.
+        <strong style={{ color: '#fff' }}>⚠ Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss.{' '}
+        <a href="#" style={{ color: '#8a8f99', textDecoration: 'underline' }}>GamCare · BeGambleAware · NCPG</a>
       </div>
     </>
   )
