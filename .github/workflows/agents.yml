@@ -9,8 +9,7 @@ jobs:
   run-agents:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -48,15 +47,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_PAT }}
           GITHUB_OWNER: techverdictpro
           GITHUB_REPO: aipickspro-
-
-      - name: Commit and push new articles
-        env:
-          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
-        run: |
-          git config user.email "agents@aipickspro.com"
-          git config user.name "AiPicksPro Agent"
-          git remote set-url origin https://techverdictpro:${GITHUB_PAT}@github.com/techverdictpro/aipickspro-.git
-          git pull origin main
-          git add content/
-          git diff --staged --quiet || git commit -m "Auto: publish new predictions $(date +%Y-%m-%d)"
-          git push origin main
