@@ -1,4 +1,4 @@
-:HL["/_next/static/chunks/0we7sb~maejnc.css","style"]
+:HL["/_next/static/chunks/0.8ob9obrl43k.css","style"]
 :HL["/_next/static/media/797e433ab948586e-s.p.0.q-h669a_dqa.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/_next/static/media/caa3a2e1cccd8315-s.p.16t1db8_9y2o~.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
-0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"predictions","param":null,"prefetchHints":0,"slots":{"children":{"name":"slug","param":{"type":"d","key":"barcelona-vs-atletico-madrid-la-liga-prediction-2026-04-23","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"0fqv32z37O8Z0kEVYO_2m"}
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"predictions","param":null,"prefetchHints":0,"slots":{"children":{"name":"slug","param":{"type":"d","key":"barcelona-vs-atletico-madrid-la-liga-prediction-2026-04-23","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"M4pAz7JzIhpNuB3EUBQr1"}
