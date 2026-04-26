@@ -25,19 +25,20 @@ function buildPrompt(match, homeStats, awayStats) {
 MATCH: ${match.home_team} vs ${match.away_team}
 COMPETITION: ${match.league}
 SPORT: ${match.sport}
+DATE: ${new Date(match.match_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
 
 ODDS: ${match.home_team} ${match.home_odds} | Draw ${match.draw_odds || 'N/A'} | ${match.away_team} ${match.away_odds}
 
 ${match.home_team} STATS:
-- Form: ${homeStats?.form || 'W-W-D-W-L'}
-- Goals per game: ${homeStats?.goals_scored || '2.1'} scored / ${homeStats?.goals_conceded || '0.9'} conceded
-- xG: ${homeStats?.xg || '2.0'}
+- Form: ${homeStats?.form || 'Unknown'}
+- Goals per game: ${homeStats?.goals_scored || 'Unknown'} scored / ${homeStats?.goals_conceded || 'Unknown'} conceded
+- xG: ${homeStats?.xg || 'N/A'}
 - Injuries: ${homeStats?.injuries || 'None reported'}
 
 ${match.away_team} STATS:
-- Form: ${awayStats?.form || 'W-D-W-L-W'}
-- Goals per game: ${awayStats?.goals_scored || '1.8'} scored / ${awayStats?.goals_conceded || '1.2'} conceded
-- xG: ${awayStats?.xg || '1.7'}
+- Form: ${awayStats?.form || 'Unknown'}
+- Goals per game: ${awayStats?.goals_scored || 'Unknown'} scored / ${awayStats?.goals_conceded || 'Unknown'} conceded
+- xG: ${awayStats?.xg || 'N/A'}
 - Injuries: ${awayStats?.injuries || 'None reported'}
 
 Write the article. Start with a compelling title on the first line (no # symbol). Then write the article. End with VERDICT: on its own line.`;
@@ -52,19 +53,39 @@ function generateSlug(home, away, league) {
 async function runWritingAgent() {
   console.log('Writing Agent starting...');
 
+  // Get all upcoming matches that don't have articles yet
   const { data: matches, error } = await supabase
     .from('matches')
     .select('*')
     .eq('status', 'upcoming')
-    .limit(6);
+    .order('match_date', { ascending: true });
 
   if (error) { console.error('DB error:', error.message); return; }
   if (!matches?.length) { console.log('No matches found'); return; }
 
-  console.log(`Writing ${matches.length} articles...`);
+  // Get existing article slugs to avoid duplicates
+  const { data: existingArticles } = await supabase
+    .from('articles')
+    .select('slug')
+    .eq('status', 'ready');
 
-  for (const match of matches) {
-    console.log(`\n→ ${match.home_team} vs ${match.away_team}`);
+  const existingSlugs = new Set((existingArticles || []).map(a => a.slug));
+
+  // Filter out matches that already have articles today
+  const toWrite = matches.filter(m => {
+    const slug = generateSlug(m.home_team, m.away_team, m.league);
+    return !existingSlugs.has(slug);
+  });
+
+  if (toWrite.length === 0) {
+    console.log('All matches already have articles for today');
+    return;
+  }
+
+  console.log(`Writing ${toWrite.length} new articles...`);
+
+  for (const match of toWrite) {
+    console.log(`\n→ ${match.home_team} vs ${match.away_team} (${match.league})`);
 
     const { data: homeStats } = await supabase
       .from('team_stats').select('*')
@@ -74,45 +95,49 @@ async function runWritingAgent() {
       .from('team_stats').select('*')
       .eq('team_name', match.away_team).single();
 
-    const response = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 1000,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: buildPrompt(match, homeStats, awayStats) }]
-    });
+    try {
+      const response = await anthropic.messages.create({
+        model: 'claude-opus-4-5',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: buildPrompt(match, homeStats, awayStats) }]
+      });
 
-    const content = response.content[0].text;
-    const lines = content.split('\n').filter(l => l.trim());
-    const title = lines[0];
-    const slug = generateSlug(match.home_team, match.away_team, match.league);
-    const verdictLine = lines.find(l => l.startsWith('VERDICT:')) || '';
-    const excerpt = verdictLine.replace('VERDICT:', '').trim();
-    const metaDesc = `${match.home_team} vs ${match.away_team} prediction, betting tips and analysis for ${match.league}. Expert stats-based pick with best odds.`;
-    const prediction = match.home_odds <= match.away_odds
-      ? `${match.home_team} Win @ ${match.home_odds}`
-      : `${match.away_team} Win @ ${match.away_odds}`;
+      const content = response.content[0].text;
+      const lines = content.split('\n').filter(l => l.trim());
+      const title = lines[0];
+      const slug = generateSlug(match.home_team, match.away_team, match.league);
+      const verdictLine = lines.find(l => l.startsWith('VERDICT:')) || '';
+      const excerpt = verdictLine.replace('VERDICT:', '').trim();
+      const metaDesc = `${match.home_team} vs ${match.away_team} prediction, betting tips and analysis for ${match.league}. Expert stats-based pick with best odds.`;
+      const prediction = match.home_odds && match.away_odds && match.home_odds <= match.away_odds
+        ? `${match.home_team} Win @ ${match.home_odds}`
+        : `${match.away_team} Win @ ${match.away_odds}`;
 
-    const { error: err } = await supabase.from('articles').upsert({
-      match_id: match.id,
-      title,
-      slug,
-      sport: match.sport,
-      league: match.league,
-      content,
-      excerpt,
-      meta_description: metaDesc,
-      prediction,
-      odds: match.home_odds?.toString(),
-      confidence: 4,
-      bookmaker: 'Bet365',
-      status: 'ready',
-      published_at: new Date().toISOString()
-    }, { onConflict: 'slug' });
+      const { error: err } = await supabase.from('articles').upsert({
+        match_id: match.id,
+        title,
+        slug,
+        sport: match.sport,
+        league: match.league,
+        content,
+        excerpt,
+        meta_description: metaDesc,
+        prediction,
+        odds: match.home_odds?.toString(),
+        confidence: 4,
+        bookmaker: 'Bet365',
+        status: 'ready',
+        published_at: new Date().toISOString()
+      }, { onConflict: 'slug' });
 
-    if (err) {
-      console.error('Save error:', err.message);
-    } else {
-      console.log('Saved:', title.substring(0, 60) + '...');
+      if (err) {
+        console.error('Save error:', err.message);
+      } else {
+        console.log('Saved:', title.substring(0, 60) + '...');
+      }
+    } catch (apiErr) {
+      console.error('Claude API error:', apiErr.message);
     }
 
     await new Promise(r => setTimeout(r, 3000));
@@ -121,7 +146,7 @@ async function runWritingAgent() {
   await supabase.from('agent_logs').insert({
     agent: 'writing-agent',
     status: 'success',
-    message: `Generated ${matches.length} articles`
+    message: `Generated ${toWrite.length} articles for upcoming matches`
   });
 
   console.log('\nWriting Agent completed!');
