@@ -57,7 +57,8 @@ export default function FootballPage() {
   const articles = getFootballArticles()
   const today = new Date().toISOString().split('T')[0]
 
-  const todayArticles = articles.filter(a => a.date === today)
+const weekAgo = new Date(Date.now() - 7 * 24 * 3600000).toISOString().split('T')[0]
+const todayArticles = articles.filter(a => a.date >= weekAgo)  cost todayArticles = articles.filter(a => a.date === today)
   const pastArticles = articles.filter(a => a.date < today)
 
   const grouped = LEAGUE_ORDER.reduce((acc, league) => {
