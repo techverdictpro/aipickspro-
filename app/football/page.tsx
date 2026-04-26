@@ -11,8 +11,6 @@ interface Article {
   odds: string
   confidence: number
   excerpt: string
-  home_team: string
-  away_team: string
 }
 
 function getFootballArticles(): Article[] {
@@ -34,8 +32,6 @@ function getFootballArticles(): Article[] {
       odds: data.odds || '',
       confidence: data.confidence || 3,
       excerpt: data.excerpt || '',
-      home_team: '',
-      away_team: '',
     })
   }
 
@@ -56,23 +52,23 @@ const LEAGUE_ORDER = [
 export default function FootballPage() {
   const articles = getFootballArticles()
   const today = new Date().toISOString().split('T')[0]
+  const weekAgo = new Date(Date.now() - 7 * 24 * 3600000).toISOString().split('T')[0]
 
-const weekAgo = new Date(Date.now() - 7 * 24 * 3600000).toISOString().split('T')[0]
-const todayArticles = articles.filter(a => a.date >= weekAgo)  cost todayArticles = articles.filter(a => a.date === today)
-  const pastArticles = articles.filter(a => a.date < today)
+  const recentArticles = articles.filter(a => a.date >= weekAgo)
+  const pastArticles = articles.filter(a => a.date < weekAgo)
 
-  const grouped = LEAGUE_ORDER.reduce((acc, league) => {
-    const leagueArticles = todayArticles.filter(a => a.league === league)
+  const grouped = LEAGUE_ORDER.reduce((acc: Record<string, Article[]>, league) => {
+    const leagueArticles = recentArticles.filter(a => a.league === league)
     if (leagueArticles.length > 0) acc[league] = leagueArticles
     return acc
-  }, {} as Record<string, Article[]>)
+  }, {})
 
-  const otherLeagues = todayArticles.filter(a => !LEAGUE_ORDER.includes(a.league))
-  const otherGrouped = otherLeagues.reduce((acc, a) => {
+  const otherLeagues = recentArticles.filter(a => !LEAGUE_ORDER.includes(a.league))
+  const otherGrouped = otherLeagues.reduce((acc: Record<string, Article[]>, a) => {
     if (!acc[a.league]) acc[a.league] = []
     acc[a.league].push(a)
     return acc
-  }, {} as Record<string, Article[]>)
+  }, {})
 
   const allGrouped = { ...grouped, ...otherGrouped }
 
@@ -96,11 +92,11 @@ const todayArticles = articles.filter(a => a.date >= weekAgo)  cost todayArticle
         .page-title em { color: #e8f042; font-style: normal; }
         .page-subtitle { font-size: 14px; color: #8a8f99; }
         .tabs { background: #111418; border-bottom: 1px solid rgba(255,255,255,0.07); }
-        .tabs-inner { max-width: 1200px; margin: 0 auto; padding: 0 32px; display: flex; gap: 0; }
+        .tabs-inner { max-width: 1200px; margin: 0 auto; padding: 0 32px; display: flex; gap: 0; overflow-x: auto; }
         .tab { padding: 14px 20px; font-size: 13px; font-weight: 600; color: #8a8f99; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
         .tab:hover { color: #fff; }
         .tab-active { color: #e8f042; border-bottom-color: #e8f042; }
-        .main { max-width: 1200px; margin: 0 auto; padding: 32px 32px; }
+        .main { max-width: 1200px; margin: 0 auto; padding: 32px; }
         .section-title { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8f99; margin: 28px 0 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; gap: 10px; }
         .section-count { background: rgba(232,240,66,0.1); color: #e8f042; font-size: 11px; padding: 2px 8px; border-radius: 10px; }
         .articles-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 8px; }
@@ -109,15 +105,16 @@ const todayArticles = articles.filter(a => a.date >= weekAgo)  cost todayArticle
         .card-league { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8f99; margin-bottom: 6px; }
         .card-title { font-size: 14px; font-weight: 700; line-height: 1.3; margin-bottom: 10px; color: #f0ede6; }
         .card-bottom { display: flex; align-items: center; justify-content: space-between; }
-        .card-tip { background: rgba(46,204,138,0.1); color: #2ecc8a; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 3px; }
+        .card-tip { background: rgba(46,204,138,0.1); color: #2ecc8a; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 3px; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .card-odds { font-size: 22px; font-weight: 900; color: #e8f042; }
         .card-conf { display: flex; gap: 2px; margin-top: 8px; }
         .cdot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); }
         .cdot-on { background: #e8f042; }
+        .card-date { font-size: 10px; color: #8a8f99; margin-top: 6px; }
         .no-articles { text-align: center; padding: 60px 32px; color: #8a8f99; }
         .no-articles h3 { font-size: 20px; margin-bottom: 8px; color: #f0ede6; }
-        .past-section { margin-top: 40px; }
-        .past-title { font-size: 20px; font-weight: 900; text-transform: uppercase; margin-bottom: 20px; color: #8a8f99; }
+        .past-section { margin-top: 40px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.07); }
+        .past-section-title { font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 20px; color: #8a8f99; }
         .past-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
         .past-card { background: #111418; border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 14px; display: block; opacity: 0.7; transition: opacity 0.2s; }
         .past-card:hover { opacity: 1; border-color: rgba(255,255,255,0.15); }
@@ -143,7 +140,7 @@ const todayArticles = articles.filter(a => a.date >= weekAgo)  cost todayArticle
 
       <div className="page-header">
         <div className="page-header-inner">
-          <div className="breadcrumb"><a href="/">Home</a> › <span style={{color:'#e8f042'}}>⚽ Football Predictions</span></div>
+          <div className="breadcrumb"><a href="/">Home</a> &rsaquo; <span style={{color:'#e8f042'}}>&#9917; Football Predictions</span></div>
           <h1 className="page-title">Football <em>Predictions</em></h1>
           <p className="page-subtitle">AI-powered tips across Premier League, Champions League, La Liga, Bundesliga, Serie A and more</p>
         </div>
@@ -151,7 +148,7 @@ const todayArticles = articles.filter(a => a.date >= weekAgo)  cost todayArticle
 
       <div className="tabs">
         <div className="tabs-inner">
-          <div className="tab tab-active">Today&apos;s Predictions</div>
+          <div className="tab tab-active">All Predictions</div>
           <div className="tab">Champions League</div>
           <div className="tab">Premier League</div>
           <div className="tab">La Liga</div>
@@ -164,7 +161,7 @@ const todayArticles = articles.filter(a => a.date >= weekAgo)  cost todayArticle
       <div className="main">
         {Object.keys(allGrouped).length === 0 ? (
           <div className="no-articles">
-            <h3>No predictions for today yet</h3>
+            <h3>No predictions yet</h3>
             <p>Our AI agents publish new predictions daily at 9:00 AM. Check back soon!</p>
           </div>
         ) : (
@@ -188,6 +185,7 @@ const todayArticles = articles.filter(a => a.date >= weekAgo)  cost todayArticle
                         <div key={i} className={i <= article.confidence ? 'cdot cdot-on' : 'cdot'} />
                       ))}
                     </div>
+                    <div className="card-date">{new Date(article.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
                   </a>
                 ))}
               </div>
@@ -197,9 +195,9 @@ const todayArticles = articles.filter(a => a.date >= weekAgo)  cost todayArticle
 
         {pastArticles.length > 0 && (
           <div className="past-section">
-            <div className="past-title">📁 Past Predictions</div>
+            <div className="past-section-title">&#128193; Past Predictions</div>
             <div className="past-grid">
-              {pastArticles.slice(0, 12).map(article => (
+              {pastArticles.slice(0, 16).map(article => (
                 <a key={article.slug} href={`/predictions/${article.slug}/`} className="past-card">
                   <div className="past-date">{new Date(article.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>
                   <div className="past-title-text">{article.title}</div>
@@ -212,7 +210,7 @@ const todayArticles = articles.filter(a => a.date >= weekAgo)  cost todayArticle
       </div>
 
       <div className="rg-bar">
-        <strong style={{color:'#fff'}}>⚠ Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss.
+        <strong style={{color:'#fff'}}>&#9888; Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss.
       </div>
     </>
   )
