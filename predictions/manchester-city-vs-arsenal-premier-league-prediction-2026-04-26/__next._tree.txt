@@ -1,4 +1,4 @@
 :HL["/_next/static/chunks/0y7n7pzz3-f_8.css","style"]
 :HL["/_next/static/media/797e433ab948586e-s.p.0.q-h669a_dqa.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/_next/static/media/caa3a2e1cccd8315-s.p.16t1db8_9y2o~.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
-0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"predictions","param":null,"prefetchHints":0,"slots":{"children":{"name":"slug","param":{"type":"d","key":"manchester-city-vs-arsenal-premier-league-prediction-2026-04-26","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"Ioc2sTyf_zRfYoddgC3T9"}
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"predictions","param":null,"prefetchHints":0,"slots":{"children":{"name":"slug","param":{"type":"d","key":"manchester-city-vs-arsenal-premier-league-prediction-2026-04-26","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"NRKB_1n2QSQ4THe8j0---"}
