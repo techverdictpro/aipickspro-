@@ -1,90 +1,79 @@
+import fs from 'fs'
+import path from 'path'
+import matter from 'gray-matter'
+
+interface Article {
+  slug: string
+  title: string
+  league: string
+  date: string
+  prediction: string
+  odds: string
+  confidence: number
+  excerpt: string
+  home_team: string
+  away_team: string
+}
+
+function getFootballArticles(): Article[] {
+  const dir = path.join(process.cwd(), 'content', 'predictions', 'football')
+  if (!fs.existsSync(dir)) return []
+
+  const files = fs.readdirSync(dir).filter(f => f.endsWith('.mdx'))
+  const articles: Article[] = []
+
+  for (const file of files) {
+    const raw = fs.readFileSync(path.join(dir, file), 'utf-8')
+    const { data } = matter(raw)
+    articles.push({
+      slug: file.replace('.mdx', ''),
+      title: data.title || '',
+      league: data.league || '',
+      date: data.date || '',
+      prediction: data.prediction || '',
+      odds: data.odds || '',
+      confidence: data.confidence || 3,
+      excerpt: data.excerpt || '',
+      home_team: '',
+      away_team: '',
+    })
+  }
+
+  return articles.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+}
+
+const LEAGUE_ORDER = [
+  'Champions League',
+  'Europa League',
+  'Premier League',
+  'La Liga',
+  'Bundesliga',
+  'Serie A',
+  'Ligue 1',
+  'Conference League',
+]
+
 export default function FootballPage() {
-  const matches = [
-    {
-      league: 'Premier League',
-      flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-      time: 'Today 20:45',
-      home: 'Man City',
-      away: 'Arsenal',
-      tip: 'Man City Win',
-      odds: '1.72',
-      conf: 4,
-      analysis: 'Man City have won 8 of their last 10 home games. Arsenal missing key midfielder. xG advantage clearly with the hosts.',
-      bookmaker: 'Bet365',
-    },
-    {
-      league: 'Champions League',
-      flag: '🇪🇺',
-      time: 'Tomorrow 21:00',
-      home: 'Real Madrid',
-      away: 'Bayern Munich',
-      tip: 'Both Teams to Score',
-      odds: '1.75',
-      conf: 4,
-      analysis: 'BTTS has landed in 9 of Real Madrid last 11 European home games. Bayern score in virtually every away game in Europe.',
-      bookmaker: 'William Hill',
-    },
-    {
-      league: 'La Liga',
-      flag: '🇪🇸',
-      time: 'Tomorrow 20:00',
-      home: 'Barcelona',
-      away: 'Atletico Madrid',
-      tip: 'Over 2.5 Goals',
-      odds: '1.85',
-      conf: 3,
-      analysis: 'Barcelona average 3.1 goals per home game this season. Last 5 meetings produced 3+ goals in 4 occasions.',
-      bookmaker: 'Unibet',
-    },
-    {
-      league: 'Bundesliga',
-      flag: '🇩🇪',
-      time: 'Tomorrow 18:30',
-      home: 'Bayern Munich',
-      away: 'Dortmund',
-      tip: 'Bayern Win & Over 2.5',
-      odds: '2.10',
-      conf: 3,
-      analysis: 'Der Klassiker rarely disappoints. Bayern are 12 points clear at the top. Dortmund have conceded 2+ in last 5 away games.',
-      bookmaker: 'Betway',
-    },
-    {
-      league: 'Serie A',
-      flag: '🇮🇹',
-      time: 'Sat 20:45',
-      home: 'Inter Milan',
-      away: 'AC Milan',
-      tip: 'Inter Win',
-      odds: '1.95',
-      conf: 4,
-      analysis: 'Inter have won 6 consecutive derbies. AC Milan missing 3 key attackers through injury. Inter at home are formidable.',
-      bookmaker: 'Bet365',
-    },
-    {
-      league: 'Ligue 1',
-      flag: '🇫🇷',
-      time: 'Sat 21:00',
-      home: 'PSG',
-      away: 'Monaco',
-      tip: 'PSG Win',
-      odds: '1.45',
-      conf: 5,
-      analysis: 'PSG have won 14 of 15 home games this season. Monaco are in poor form — 1 win in last 6. Mbappe back from suspension.',
-      bookmaker: 'DraftKings',
-    },
-  ]
+  const articles = getFootballArticles()
+  const today = new Date().toISOString().split('T')[0]
 
-  const confText = (c: number) => {
-    if (c >= 5) return 'Very High'
-    if (c >= 4) return 'High'
-    return 'Medium'
-  }
+  const todayArticles = articles.filter(a => a.date === today)
+  const pastArticles = articles.filter(a => a.date < today)
 
-  const confColor = (c: number) => {
-    if (c >= 5) return '#2ecc8a'
-    if (c >= 4) return '#e8f042'
-    return '#f39c12'
-  }
+  const grouped = LEAGUE_ORDER.reduce((acc, league) => {
+    const leagueArticles = todayArticles.filter(a => a.league === league)
+    if (leagueArticles.length > 0) acc[league] = leagueArticles
+    return acc
+  }, {} as Record<string, Article[]>)
+
+  const otherLeagues = todayArticles.filter(a => !LEAGUE_ORDER.includes(a.league))
+  const otherGrouped = otherLeagues.reduce((acc, a) => {
+    if (!acc[a.league]) acc[a.league] = []
+    acc[a.league].push(a)
+    return acc
+  }, {} as Record<string, Article[]>)
+
+  const allGrouped = { ...grouped, ...otherGrouped }
 
   return (
     <>
@@ -97,67 +86,46 @@ export default function FootballPage() {
         .logo-accent { color: #e8f042; }
         .nav-links { display: flex; gap: 24px; font-size: 13px; color: #8a8f99; }
         .nav-links a:hover { color: #fff; }
-        .nav-active { color: #e8f042 !important; }
+        .nav-active { color: #e8f042 !important; border-bottom: 2px solid #e8f042; padding-bottom: 2px; }
         .nav-cta { background: #e8f042; color: #000; padding: 8px 20px; border-radius: 4px; font-size: 13px; font-weight: 800; }
-        .page-header { background: #0d1019; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 40px 32px; }
+        .page-header { background: #0d1019; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 32px 32px 24px; }
         .page-header-inner { max-width: 1200px; margin: 0 auto; }
-        .breadcrumb { font-size: 12px; color: #8a8f99; margin-bottom: 12px; }
-        .breadcrumb a { color: #8a8f99; }
-        .breadcrumb a:hover { color: #fff; }
-        .breadcrumb span { color: #e8f042; }
-        .page-title { font-size: 48px; font-weight: 900; text-transform: uppercase; line-height: 0.95; margin-bottom: 12px; }
+        .breadcrumb { font-size: 12px; color: #8a8f99; margin-bottom: 10px; }
+        .page-title { font-size: 42px; font-weight: 900; text-transform: uppercase; line-height: 1; margin-bottom: 8px; }
         .page-title em { color: #e8f042; font-style: normal; }
-        .page-subtitle { font-size: 15px; color: #8a8f99; max-width: 600px; line-height: 1.6; }
-        .leagues-bar { background: #111418; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 0 32px; display: flex; gap: 0; overflow-x: auto; }
-        .league-tab { padding: 14px 20px; font-size: 13px; font-weight: 600; color: #8a8f99; border-bottom: 2px solid transparent; white-space: nowrap; cursor: pointer; }
-        .league-tab:hover { color: #fff; }
-        .league-tab-active { color: #e8f042; border-bottom-color: #e8f042; }
-        .main { max-width: 1200px; margin: 0 auto; padding: 40px 32px; display: grid; grid-template-columns: 1fr 300px; gap: 32px; }
-        .matches-list { display: flex; flex-direction: column; gap: 16px; }
-        .league-header { display: flex; align-items: center; gap: 10px; margin: 24px 0 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.07); }
-        .league-header:first-child { margin-top: 0; }
-        .league-name { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #8a8f99; }
-        .match-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
-        .match-card:hover { border-color: rgba(232,240,66,0.25); }
-        .match-header { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); }
-        .match-league { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8f99; }
-        .match-time { font-size: 12px; color: #8a8f99; background: rgba(255,255,255,0.05); padding: 3px 10px; border-radius: 3px; }
-        .match-body { padding: 20px; }
-        .match-teams { font-size: 24px; font-weight: 900; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.02em; }
-        .match-vs { color: #8a8f99; font-size: 16px; margin: 0 8px; }
-        .match-main { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
-        .match-tip { background: rgba(232,240,66,0.1); border: 1px solid rgba(232,240,66,0.3); color: #e8f042; font-size: 14px; font-weight: 800; padding: 8px 18px; border-radius: 4px; }
-        .match-odds-wrap { display: flex; align-items: baseline; gap: 6px; }
-        .match-odds-label { font-size: 12px; color: #8a8f99; }
-        .match-odds { font-size: 32px; font-weight: 900; color: #e8f042; }
-        .match-conf { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-        .match-conf-label { font-size: 11px; font-weight: 700; }
-        .conf-dots { display: flex; gap: 3px; }
-        .cdot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.1); }
-        .cdot-on { background: currentColor; }
-        .match-analysis { font-size: 14px; color: #8a8f99; line-height: 1.6; margin-bottom: 16px; border-left: 2px solid rgba(232,240,66,0.3); padding-left: 14px; }
-        .match-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.05); }
-        .match-bm { font-size: 12px; color: #8a8f99; }
-        .match-bm strong { color: #fff; }
-        .match-btn { background: #e8f042; color: #000; font-size: 12px; font-weight: 800; padding: 8px 18px; border-radius: 4px; }
-        .sidebar { display: flex; flex-direction: column; gap: 16px; }
-        .sidebar-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 20px; }
-        .sidebar-title { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8a8f99; margin-bottom: 16px; }
-        .record-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
-        .record-row:last-child { border-bottom: none; }
-        .record-win { color: #2ecc8a; font-weight: 700; }
-        .record-loss { color: #e84545; font-weight: 700; }
-        .bm-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .bm-item:last-child { border-bottom: none; }
-        .bm-name { font-size: 14px; font-weight: 700; }
-        .bm-bonus { font-size: 11px; color: #2ecc8a; }
-        .bm-cta { background: #e8f042; color: #000; font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 3px; }
-        .rg-bar { background: rgba(232,69,69,0.05); border-top: 1px solid rgba(232,69,69,0.15); padding: 12px 32px; text-align: center; font-size: 11px; color: #8a8f99; margin-top: 40px; }
-        @media (max-width: 900px) {
-          .main { grid-template-columns: 1fr; }
-          .nav-links { display: none; }
-          .page-title { font-size: 32px; }
-        }
+        .page-subtitle { font-size: 14px; color: #8a8f99; }
+        .tabs { background: #111418; border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .tabs-inner { max-width: 1200px; margin: 0 auto; padding: 0 32px; display: flex; gap: 0; }
+        .tab { padding: 14px 20px; font-size: 13px; font-weight: 600; color: #8a8f99; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
+        .tab:hover { color: #fff; }
+        .tab-active { color: #e8f042; border-bottom-color: #e8f042; }
+        .main { max-width: 1200px; margin: 0 auto; padding: 32px 32px; }
+        .section-title { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8f99; margin: 28px 0 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; gap: 10px; }
+        .section-count { background: rgba(232,240,66,0.1); color: #e8f042; font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+        .articles-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 8px; }
+        .article-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 16px; cursor: pointer; transition: border-color 0.2s; display: block; }
+        .article-card:hover { border-color: rgba(232,240,66,0.3); }
+        .card-league { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8f99; margin-bottom: 6px; }
+        .card-title { font-size: 14px; font-weight: 700; line-height: 1.3; margin-bottom: 10px; color: #f0ede6; }
+        .card-bottom { display: flex; align-items: center; justify-content: space-between; }
+        .card-tip { background: rgba(46,204,138,0.1); color: #2ecc8a; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 3px; }
+        .card-odds { font-size: 22px; font-weight: 900; color: #e8f042; }
+        .card-conf { display: flex; gap: 2px; margin-top: 8px; }
+        .cdot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+        .cdot-on { background: #e8f042; }
+        .no-articles { text-align: center; padding: 60px 32px; color: #8a8f99; }
+        .no-articles h3 { font-size: 20px; margin-bottom: 8px; color: #f0ede6; }
+        .past-section { margin-top: 40px; }
+        .past-title { font-size: 20px; font-weight: 900; text-transform: uppercase; margin-bottom: 20px; color: #8a8f99; }
+        .past-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .past-card { background: #111418; border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 14px; display: block; opacity: 0.7; transition: opacity 0.2s; }
+        .past-card:hover { opacity: 1; border-color: rgba(255,255,255,0.15); }
+        .past-date { font-size: 10px; color: #8a8f99; margin-bottom: 4px; }
+        .past-title-text { font-size: 12px; font-weight: 600; line-height: 1.3; color: #f0ede6; }
+        .past-league { font-size: 10px; color: #8a8f99; margin-top: 4px; }
+        .rg-bar { background: rgba(232,69,69,0.05); border-top: 1px solid rgba(232,69,69,0.15); padding: 12px 32px; text-align: center; font-size: 11px; color: #8a8f99; margin-top: 60px; }
+        @media (max-width: 900px) { .articles-grid { grid-template-columns: repeat(2, 1fr); } .past-grid { grid-template-columns: repeat(2, 1fr); } .nav-links { display: none; } }
+        @media (max-width: 600px) { .articles-grid { grid-template-columns: 1fr; } .past-grid { grid-template-columns: 1fr; } }
       `}</style>
 
       <nav>
@@ -174,111 +142,76 @@ export default function FootballPage() {
 
       <div className="page-header">
         <div className="page-header-inner">
-          <div className="breadcrumb">
-            <a href="/">Home</a> › <span>Football Predictions</span>
-          </div>
-          <h1 className="page-title">Football<br /><em>Predictions</em></h1>
-          <p className="page-subtitle">AI-powered football tips across Premier League, Champions League, La Liga, Bundesliga, Serie A and more. Updated every 6 hours.</p>
+          <div className="breadcrumb"><a href="/">Home</a> › <span style={{color:'#e8f042'}}>⚽ Football Predictions</span></div>
+          <h1 className="page-title">Football <em>Predictions</em></h1>
+          <p className="page-subtitle">AI-powered tips across Premier League, Champions League, La Liga, Bundesliga, Serie A and more</p>
         </div>
       </div>
 
-      <div className="leagues-bar">
-        {['All Leagues', 'Premier League', 'Champions League', 'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1'].map((l, i) => (
-          <div key={l} className={i === 0 ? 'league-tab league-tab-active' : 'league-tab'}>{l}</div>
-        ))}
+      <div className="tabs">
+        <div className="tabs-inner">
+          <div className="tab tab-active">Today&apos;s Predictions</div>
+          <div className="tab">Champions League</div>
+          <div className="tab">Premier League</div>
+          <div className="tab">La Liga</div>
+          <div className="tab">Bundesliga</div>
+          <div className="tab">Serie A</div>
+          <div className="tab">Ligue 1</div>
+        </div>
       </div>
 
       <div className="main">
-        <div className="matches-list">
-          {matches.map((m) => (
-            <div key={m.home + m.away} className="match-card">
-              <div className="match-header">
-                <div className="match-league">{m.flag} {m.league}</div>
-                <div className="match-time">{m.time}</div>
+        {Object.keys(allGrouped).length === 0 ? (
+          <div className="no-articles">
+            <h3>No predictions for today yet</h3>
+            <p>Our AI agents publish new predictions daily at 9:00 AM. Check back soon!</p>
+          </div>
+        ) : (
+          Object.entries(allGrouped).map(([league, leagueArticles]) => (
+            <div key={league}>
+              <div className="section-title">
+                {league}
+                <span className="section-count">{leagueArticles.length} tips</span>
               </div>
-              <div className="match-body">
-                <div className="match-teams">
-                  {m.home} <span className="match-vs">vs</span> {m.away}
-                </div>
-                <div className="match-main">
-                  <div className="match-tip">{m.tip}</div>
-                  <div className="match-odds-wrap">
-                    <span className="match-odds-label">Odds</span>
-                    <span className="match-odds">{m.odds}</span>
-                  </div>
-                  <div className="match-conf" style={{ color: confColor(m.conf) }}>
-                    <div className="conf-dots">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className={i <= m.conf ? 'cdot cdot-on' : 'cdot'} />
+              <div className="articles-grid">
+                {leagueArticles.map(article => (
+                  <a key={article.slug} href={`/predictions/${article.slug}/`} className="article-card">
+                    <div className="card-league">{article.league}</div>
+                    <div className="card-title">{article.title}</div>
+                    <div className="card-bottom">
+                      <span className="card-tip">{article.prediction?.split('@')[0]?.trim()}</span>
+                      <span className="card-odds">{article.odds}</span>
+                    </div>
+                    <div className="card-conf">
+                      {[1,2,3,4,5].map(i => (
+                        <div key={i} className={i <= article.confidence ? 'cdot cdot-on' : 'cdot'} />
                       ))}
                     </div>
-                    <span className="match-conf-label">{confText(m.conf)}</span>
-                  </div>
-                </div>
-                <div className="match-analysis">{m.analysis}</div>
-                <div className="match-footer">
-                  <div className="match-bm">Best odds at <strong>{m.bookmaker}</strong></div>
-                  <a href="#" className="match-btn">BET NOW →</a>
-                </div>
+                  </a>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
+          ))
+        )}
 
-        <div className="sidebar">
-          <div className="sidebar-card">
-            <div className="sidebar-title">Football Record</div>
-            {[
-              { league: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League', w: 18, l: 6 },
-              { league: '🇪🇺 Champions League', w: 11, l: 3 },
-              { league: '🇪🇸 La Liga', w: 14, l: 5 },
-              { league: '🇩🇪 Bundesliga', w: 9, l: 4 },
-              { league: '🇮🇹 Serie A', w: 12, l: 5 },
-            ].map((r) => (
-              <div key={r.league} className="record-row">
-                <span style={{ fontSize: '12px' }}>{r.league}</span>
-                <span><span className="record-win">{r.w}W</span> / <span className="record-loss">{r.l}L</span></span>
-              </div>
-            ))}
+        {pastArticles.length > 0 && (
+          <div className="past-section">
+            <div className="past-title">📁 Past Predictions</div>
+            <div className="past-grid">
+              {pastArticles.slice(0, 12).map(article => (
+                <a key={article.slug} href={`/predictions/${article.slug}/`} className="past-card">
+                  <div className="past-date">{new Date(article.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>
+                  <div className="past-title-text">{article.title}</div>
+                  <div className="past-league">{article.league}</div>
+                </a>
+              ))}
+            </div>
           </div>
-
-          <div className="sidebar-card">
-            <div className="sidebar-title">Top Bookmakers</div>
-            {[
-              { name: 'Bet365', bonus: 'Up to £100 bonus' },
-              { name: 'William Hill', bonus: '£30 free bet' },
-              { name: 'Betway', bonus: '€30 free bet' },
-              { name: 'Unibet', bonus: '€40 bonus' },
-            ].map((bm) => (
-              <div key={bm.name} className="bm-item">
-                <div>
-                  <div className="bm-name">{bm.name}</div>
-                  <div className="bm-bonus">{bm.bonus}</div>
-                </div>
-                <a href="#" className="bm-cta">Claim →</a>
-              </div>
-            ))}
-          </div>
-
-          <div className="sidebar-card" style={{ background: 'rgba(232,240,66,0.04)', borderColor: 'rgba(232,240,66,0.2)' }}>
-            <div className="sidebar-title" style={{ color: '#e8f042' }}>Get Daily Tips Free</div>
-            <p style={{ fontSize: '13px', color: '#8a8f99', marginBottom: '14px', lineHeight: '1.6' }}>
-              Join 12,000+ bettors receiving our AI football picks every morning.
-            </p>
-            <input
-              type="email"
-              placeholder="your@email.com"
-              style={{ width: '100%', background: '#0a0c0f', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '10px 14px', color: '#fff', fontSize: '14px', marginBottom: '10px' }}
-            />
-            <a href="#" style={{ display: 'block', background: '#e8f042', color: '#000', textAlign: 'center', padding: '10px', borderRadius: '4px', fontWeight: '800', fontSize: '13px', letterSpacing: '0.05em' }}>
-              SUBSCRIBE FREE →
-            </a>
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="rg-bar">
-        <strong style={{ color: '#fff' }}>⚠ Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss.
+        <strong style={{color:'#fff'}}>⚠ Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss.
       </div>
     </>
   )
