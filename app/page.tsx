@@ -1,19 +1,92 @@
-export default function HomePage() {
-  const picks = [
-    { sport: '⚽ Premier League · 20:45', match: 'Man City vs Arsenal', tip: 'Man City Win', odds: '1.72', conf: 4, featured: true },
-    { sport: '🏀 NBA · 01:30', match: 'Lakers vs Celtics', tip: 'Over 224.5', odds: '1.90', conf: 3, featured: false },
-    { sport: '🎾 Roland Garros · 14:00', match: 'Djokovic vs Alcaraz', tip: 'Alcaraz Win', odds: '1.90', conf: 5, featured: false },
-    { sport: '🏈 NFL · 22:00', match: 'Chiefs vs Eagles', tip: 'Chiefs -3.5', odds: '1.91', conf: 3, featured: false },
-  ]
+import fs from 'fs'
+import path from 'path'
+import matter from 'gray-matter'
 
-  const bookmakers = [
-    { name: 'Bet365', bonus: 'Up to £100 bonus' },
-    { name: 'William Hill', bonus: '£30 free bet' },
-    { name: 'DraftKings', bonus: '$200 bonus bets' },
-    { name: 'FanDuel', bonus: '$1000 no sweat' },
-    { name: 'Betway', bonus: '€30 free bet' },
-    { name: 'Unibet', bonus: '€40 bonus' },
-  ]
+interface Article {
+  slug: string
+  title: string
+  sport: string
+  league: string
+  date: string
+  prediction: string
+  odds: string
+  confidence: number
+  content: string
+}
+
+const SPORT_EMOJI: Record<string, string> = {
+  football: '⚽', basketball: '🏀', tennis: '🎾', nfl: '🏈'
+}
+
+const SPORT_COLOR: Record<string, string> = {
+  football: '#4a9eff', basketball: '#e84545', tennis: '#2ecc8a', nfl: '#f39c12'
+}
+
+function getRecentArticles(limit = 6): Article[] {
+  const sports = ['football', 'basketball', 'tennis', 'nfl']
+  const articles: Article[] = []
+  const weekAgo = new Date(Date.now() - 7 * 24 * 3600000).toISOString().split('T')[0]
+
+  for (const sport of sports) {
+    const baseDir = path.join(process.cwd(), 'content', 'predictions', sport)
+    if (!fs.existsSync(baseDir)) continue
+
+    const entries = fs.readdirSync(baseDir)
+    for (const entry of entries) {
+      const entryPath = path.join(baseDir, entry)
+      if (entry.endsWith('.mdx')) {
+        const raw = fs.readFileSync(entryPath, 'utf-8')
+        const { data, content } = matter(raw)
+        if (data.date >= weekAgo) articles.push({ ...data, sport, content } as Article)
+      } else if (fs.statSync(entryPath).isDirectory()) {
+        const files = fs.readdirSync(entryPath).filter(f => f.endsWith('.mdx'))
+        for (const file of files) {
+          const raw = fs.readFileSync(path.join(entryPath, file), 'utf-8')
+          const { data, content } = matter(raw)
+          if (data.date >= weekAgo) articles.push({ ...data, sport, content } as Article)
+        }
+      }
+    }
+  }
+
+  return articles
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, limit)
+}
+
+function getPreview(content: string): string {
+  const lines = content.split('\n').filter(l => l.trim() && !l.startsWith('---') && !l.startsWith('#') && !l.startsWith('*'))
+  return lines[0]?.substring(0, 160) + '...' || ''
+}
+
+export default function HomePage() {
+  const articles = getRecentArticles(9)
+  const totalCount = (() => {
+    const sports = ['football', 'basketball', 'tennis', 'nfl']
+    let count = 0
+    const weekAgo = new Date(Date.now() - 7 * 24 * 3600000).toISOString().split('T')[0]
+    for (const sport of sports) {
+      const baseDir = path.join(process.cwd(), 'content', 'predictions', sport)
+      if (!fs.existsSync(baseDir)) continue
+      const entries = fs.readdirSync(baseDir)
+      for (const entry of entries) {
+        const entryPath = path.join(baseDir, entry)
+        if (entry.endsWith('.mdx')) {
+          const raw = fs.readFileSync(entryPath, 'utf-8')
+          const { data } = matter(raw)
+          if (data.date >= weekAgo) count++
+        } else if (fs.statSync(entryPath).isDirectory()) {
+          const files = fs.readdirSync(entryPath).filter(f => f.endsWith('.mdx'))
+          for (const file of files) {
+            const raw = fs.readFileSync(path.join(entryPath, file), 'utf-8')
+            const { data } = matter(raw)
+            if (data.date >= weekAgo) count++
+          }
+        }
+      }
+    }
+    return count
+  })()
 
   return (
     <>
@@ -22,74 +95,71 @@ export default function HomePage() {
         body { background: #0a0c0f; color: #f0ede6; font-family: 'Segoe UI', Arial, sans-serif; }
         a { text-decoration: none; color: inherit; }
         nav { position: sticky; top: 0; z-index: 100; background: rgba(10,12,15,0.96); border-bottom: 1px solid rgba(255,255,255,0.07); padding: 0 32px; height: 58px; display: flex; align-items: center; justify-content: space-between; }
-        .logo { font-size: 22px; font-weight: 900; letter-spacing: 0.02em; }
+        .logo { font-size: 22px; font-weight: 900; }
         .logo-accent { color: #e8f042; }
         .nav-links { display: flex; gap: 24px; font-size: 13px; color: #8a8f99; }
         .nav-links a:hover { color: #fff; }
-        .nav-cta { background: #e8f042; color: #000; padding: 8px 20px; border-radius: 4px; font-size: 13px; font-weight: 800; letter-spacing: 0.05em; }
-        .hero { background: #0d1019; padding: 64px 32px 56px; border-bottom: 1px solid rgba(255,255,255,0.07); }
-        .hero-label { display: inline-block; background: rgba(232,240,66,0.1); border: 1px solid rgba(232,240,66,0.25); color: #e8f042; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; padding: 5px 14px; border-radius: 2px; margin-bottom: 24px; text-transform: uppercase; }
-        .hero h1 { font-size: 72px; font-weight: 900; line-height: 0.9; text-transform: uppercase; margin-bottom: 20px; max-width: 700px; }
-        .hero-accent { color: #e8f042; }
-        .hero p { font-size: 17px; color: #8a8f99; max-width: 520px; line-height: 1.7; margin-bottom: 32px; }
-        .btn-primary { background: #e8f042; color: #000; padding: 14px 32px; border-radius: 4px; font-size: 15px; font-weight: 800; letter-spacing: 0.05em; display: inline-block; }
-        .btn-secondary { border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 14px 32px; border-radius: 4px; font-size: 15px; display: inline-block; margin-left: 12px; }
-        .hero-stats { display: flex; gap: 48px; margin-top: 48px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.07); flex-wrap: wrap; }
-        .stat-val { font-size: 40px; font-weight: 900; color: #e8f042; line-height: 1; }
-        .stat-label { font-size: 11px; color: #8a8f99; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
-        .aff-strip { background: #111418; border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 16px 32px; display: flex; align-items: center; gap: 20px; overflow-x: auto; }
-        .aff-strip-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #8a8f99; white-space: nowrap; flex-shrink: 0; }
-        .aff-item { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 6px; padding: 10px 16px; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
-        .aff-item:hover { border-color: rgba(255,255,255,0.18); }
-        .aff-name { font-size: 14px; font-weight: 700; }
-        .aff-bonus { font-size: 11px; color: #2ecc8a; font-weight: 600; }
-        .aff-btn { background: #e8f042; color: #000; font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 3px; }
-        .section { max-width: 1200px; margin: 0 auto; padding: 48px 32px; }
-        .section-header { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 12px; margin-bottom: 24px; }
-        .section-title { font-size: 26px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.02em; }
-        .section-link { font-size: 12px; color: #e8f042; font-weight: 700; letter-spacing: 0.08em; }
-        .picks-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-        .pick-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 20px; cursor: pointer; transition: border-color 0.2s; display: block; }
+        .nav-cta { background: #e8f042; color: #000; padding: 8px 20px; border-radius: 4px; font-size: 13px; font-weight: 800; }
+        .hero { background: linear-gradient(135deg, #0d1019 0%, #0a0c0f 100%); border-bottom: 1px solid rgba(255,255,255,0.07); padding: 64px 32px; }
+        .hero-inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+        .hero-label { font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #e8f042; margin-bottom: 16px; }
+        .hero-title { font-size: 56px; font-weight: 900; line-height: 0.95; text-transform: uppercase; margin-bottom: 20px; }
+        .hero-title em { color: #e8f042; font-style: normal; }
+        .hero-sub { font-size: 16px; color: #8a8f99; line-height: 1.7; margin-bottom: 32px; max-width: 480px; }
+        .hero-cta { background: #e8f042; color: #000; padding: 14px 32px; border-radius: 4px; font-size: 15px; font-weight: 800; display: inline-block; letter-spacing: 0.04em; }
+        .hero-cta:hover { background: #c8d435; }
+        .hero-stats { display: flex; gap: 32px; margin-top: 32px; }
+        .hero-stat strong { display: block; font-size: 32px; font-weight: 900; color: #e8f042; }
+        .hero-stat span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8a8f99; }
+        .affiliates-bar { background: #0d1019; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 32px; overflow: hidden; }
+        .affiliates-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 32px; }
+        .affiliates-label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8f99; white-space: nowrap; }
+        .aff-links { display: flex; gap: 20px; flex-wrap: wrap; }
+        .aff-link { font-size: 13px; font-weight: 700; color: #f0ede6; padding: 5px 16px; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; transition: border-color 0.2s; }
+        .aff-link:hover { border-color: #e8f042; color: #e8f042; }
+        .main { max-width: 1200px; margin: 0 auto; padding: 48px 32px; }
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+        .section-title { font-size: 22px; font-weight: 900; text-transform: uppercase; }
+        .section-title em { color: #e8f042; font-style: normal; }
+        .section-link { font-size: 13px; color: #8a8f99; }
+        .section-link:hover { color: #e8f042; }
+        .picks-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 48px; }
+        .pick-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; transition: border-color 0.2s; }
         .pick-card:hover { border-color: rgba(232,240,66,0.3); }
-        .pick-card-featured { background: rgba(232,240,66,0.03); border-color: rgba(232,240,66,0.35); }
-        .pick-sport { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8f99; margin-bottom: 8px; }
-        .pick-match { font-size: 15px; font-weight: 600; margin-bottom: 14px; line-height: 1.3; color: #f0ede6; }
-        .pick-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .pick-tip { background: rgba(46,204,138,0.1); color: #2ecc8a; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 3px; }
-        .pick-odds { font-size: 26px; font-weight: 900; color: #e8f042; }
-        .conf-bar { display: flex; gap: 3px; }
-        .conf-dot { height: 4px; flex: 1; border-radius: 2px; background: rgba(255,255,255,0.1); }
-        .conf-dot-on { background: #e8f042; }
-        .conf-text { font-size: 11px; color: #8a8f99; margin-top: 5px; text-align: right; }
-        .aff-inline { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-left: 3px solid #e8f042; border-radius: 6px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; margin: 32px 0; gap: 20px; }
-        .aff-inline-title { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
-        .aff-inline-sub { font-size: 12px; color: #8a8f99; }
-        .aff-inline-disclaimer { font-size: 10px; color: #8a8f99; margin-top: 4px; }
-        footer { background: #111418; border-top: 1px solid rgba(255,255,255,0.07); padding: 48px 32px 32px; margin-top: 60px; }
-        .footer-inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; }
-        .footer-logo { font-size: 20px; font-weight: 900; margin-bottom: 10px; }
-        .footer-about { font-size: 13px; color: #8a8f99; line-height: 1.7; }
-        .footer-col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8f99; margin-bottom: 14px; }
-        .footer-links { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #8a8f99; }
-        .footer-links a:hover { color: #fff; }
-        .footer-bottom { max-width: 1200px; margin: 28px auto 0; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 20px; display: flex; justify-content: space-between; font-size: 11px; color: #8a8f99; flex-wrap: wrap; gap: 8px; }
+        .pick-card-header { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); }
+        .pick-sport-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 10px; border-radius: 3px; }
+        .pick-league { font-size: 11px; color: #8a8f99; }
+        .pick-card-body { padding: 16px; flex: 1; }
+        .pick-title { font-size: 14px; font-weight: 700; line-height: 1.3; margin-bottom: 8px; color: #f0ede6; }
+        .pick-preview { font-size: 12px; color: #8a8f99; line-height: 1.5; margin-bottom: 12px; }
+        .pick-box { background: rgba(232,240,66,0.08); border: 1px solid rgba(232,240,66,0.2); border-radius: 4px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; }
+        .pick-label { font-size: 10px; color: #8a8f99; margin-bottom: 2px; }
+        .pick-val { font-size: 12px; font-weight: 800; color: #e8f042; }
+        .pick-odds { font-size: 24px; font-weight: 900; color: #e8f042; }
+        .pick-card-footer { padding: 10px 16px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; }
+        .pick-date { font-size: 11px; color: #8a8f99; }
+        .pick-btn { background: #e8f042; color: #000; font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 3px; }
+        .pick-btn:hover { background: #c8d435; }
+        .sports-nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 48px; }
+        .sport-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 20px; display: flex; align-items: center; gap: 14px; transition: border-color 0.2s; }
+        .sport-card:hover { border-color: rgba(232,240,66,0.3); }
+        .sport-emoji { font-size: 28px; }
+        .sport-name { font-size: 15px; font-weight: 800; text-transform: uppercase; }
+        .sport-count { font-size: 12px; color: #8a8f99; margin-top: 2px; }
+        .bm-strip { background: #0d1019; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 24px; margin-bottom: 48px; }
+        .bm-strip-title { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8a8f99; margin-bottom: 16px; }
+        .bm-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+        .bm-item { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 6px; padding: 12px; text-align: center; }
+        .bm-name { font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+        .bm-bonus { font-size: 10px; color: #2ecc8a; margin-bottom: 8px; }
+        .bm-btn { background: #e8f042; color: #000; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 3px; display: inline-block; }
         .rg-bar { background: rgba(232,69,69,0.05); border-top: 1px solid rgba(232,69,69,0.15); padding: 12px 32px; text-align: center; font-size: 11px; color: #8a8f99; }
-        @media (max-width: 900px) {
-          .picks-grid { grid-template-columns: repeat(2, 1fr); }
-          .hero h1 { font-size: 48px; }
-          .nav-links { display: none; }
-          .footer-inner { grid-template-columns: 1fr 1fr; }
-        }
-        @media (max-width: 600px) {
-          .picks-grid { grid-template-columns: 1fr; }
-          .hero h1 { font-size: 36px; }
-          .hero-stats { gap: 24px; }
-          .aff-inline { flex-direction: column; align-items: flex-start; }
-        }
+        @media (max-width: 1000px) { .picks-grid { grid-template-columns: repeat(2, 1fr); } .bm-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 700px) { .hero-inner { grid-template-columns: 1fr; } .hero-title { font-size: 36px; } .picks-grid { grid-template-columns: 1fr; } .sports-nav { grid-template-columns: repeat(2, 1fr); } .nav-links { display: none; } .bm-grid { grid-template-columns: repeat(2, 1fr); } }
       `}</style>
 
       <nav>
-        <div className="logo">Ai<span className="logo-accent">Picks</span>Pro</div>
+        <a href="/" className="logo">Ai<span className="logo-accent">Picks</span>Pro</a>
         <div className="nav-links">
           <a href="/football/">Football</a>
           <a href="/basketball/">Basketball</a>
@@ -101,111 +171,134 @@ export default function HomePage() {
       </nav>
 
       <div className="hero">
-        <div className="hero-label">● AI-Powered · Live Analysis · Updated Daily</div>
-        <h1>The <span className="hero-accent">Smarter</span><br />Way to Bet</h1>
-        <p>Our AI agents analyse thousands of data points — form, injuries, head-to-head, market movement — to deliver daily picks for football, NBA, tennis and more.</p>
-        <a href="/tips-today/" className="btn-primary">TODAY&apos;S FREE TIPS →</a>
-        <div className="hero-stats">
-          <div><div className="stat-val">74%</div><div className="stat-label">Win rate (last 90 days)</div></div>
-          <div><div className="stat-val">+2,840</div><div className="stat-label">Units profit (2025)</div></div>
-          <div><div className="stat-val">12k+</div><div className="stat-label">Subscribers</div></div>
-          <div><div className="stat-val">4</div><div className="stat-label">Sports covered</div></div>
-        </div>
-      </div>
-
-      <div className="aff-strip">
-        <div className="aff-strip-label">Trusted Partners</div>
-        {bookmakers.map((bm) => (
-          <div key={bm.name} className="aff-item">
-            <div>
-              <div className="aff-name">{bm.name}</div>
-              <div className="aff-bonus">{bm.bonus}</div>
+        <div className="hero-inner">
+          <div>
+            <div className="hero-label">&#129302; AI-Powered Sports Analysis</div>
+            <h1 className="hero-title">The <em>Smarter</em><br />Way to Bet</h1>
+            <p className="hero-sub">Our AI agents analyse thousands of data points — form, injuries, head-to-head, market movement — to deliver daily picks for {totalCount}+ events across football, NBA, tennis and more.</p>
+            <a href="/tips-today/" className="hero-cta">TODAY&apos;S FREE TIPS &rarr;</a>
+            <div className="hero-stats">
+              <div className="hero-stat"><strong>74%</strong><span>Win Rate</span></div>
+              <div className="hero-stat"><strong>{totalCount}+</strong><span>Tips This Week</span></div>
+              <div className="hero-stat"><strong>20+</strong><span>Competitions</span></div>
             </div>
-            <div className="aff-btn">Claim →</div>
           </div>
-        ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {articles.slice(0, 3).map(article => (
+              <a key={article.slug} href={`/predictions/${article.slug}/`} style={{ background: '#111418', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '14px 18px', display: 'block', transition: 'border-color 0.2s' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: SPORT_COLOR[article.sport] }}>{SPORT_EMOJI[article.sport]} {article.sport}</span>
+                  <span style={{ fontSize: '10px', color: '#8a8f99' }}>{article.league}</span>
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>{article.title}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '12px', color: '#e8f042', fontWeight: 700 }}>{article.prediction?.split('@')[0]?.trim()}</span>
+                  <span style={{ fontSize: '20px', fontWeight: 900, color: '#e8f042' }}>{article.odds}</span>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="section">
-        <div className="section-header">
-          <div className="section-title">Today&apos;s Top Picks</div>
-          <a href="/tips-today/" className="section-link">ALL PICKS →</a>
+      <div className="affiliates-bar">
+        <div className="affiliates-inner">
+          <span className="affiliates-label">Trusted Partners</span>
+          <div className="aff-links">
+            {[
+              { name: 'Bet365', url: 'https://www.bet365.com' },
+              { name: 'William Hill', url: 'https://www.williamhill.com' },
+              { name: 'DraftKings', url: 'https://www.draftkings.com' },
+              { name: 'FanDuel', url: 'https://www.fanduel.com' },
+              { name: 'Betway', url: 'https://www.betway.com' },
+              { name: 'Unibet', url: 'https://www.unibet.com' },
+            ].map(bm => (
+              <a key={bm.name} href={bm.url} target="_blank" rel="noopener noreferrer" className="aff-link">{bm.name}</a>
+            ))}
+          </div>
         </div>
+      </div>
+
+      <div className="main">
+        <div className="sports-nav">
+          {[
+            { sport: 'football', href: '/football/', label: 'Football' },
+            { sport: 'basketball', href: '/basketball/', label: 'Basketball' },
+            { sport: 'tennis', href: '/tennis/', label: 'Tennis' },
+            { sport: 'nfl', href: '/nfl/', label: 'NFL' },
+          ].map(s => {
+            const count = articles.filter(a => a.sport === s.sport).length
+            return (
+              <a key={s.sport} href={s.href} className="sport-card">
+                <div className="sport-emoji">{SPORT_EMOJI[s.sport]}</div>
+                <div>
+                  <div className="sport-name">{s.label}</div>
+                  <div className="sport-count">{count} tips this week</div>
+                </div>
+              </a>
+            )
+          })}
+        </div>
+
+        <div className="section-header">
+          <h2 className="section-title">Latest <em>Predictions</em></h2>
+          <a href="/tips-today/" className="section-link">View all tips &rarr;</a>
+        </div>
+
         <div className="picks-grid">
-          {picks.map((p) => (
-            <a href="/tips-today/" key={p.match} className={p.featured ? 'pick-card pick-card-featured' : 'pick-card'}>
-              <div className="pick-sport">{p.sport}</div>
-              <div className="pick-match">{p.match}</div>
-              <div className="pick-row">
-                <span className="pick-tip">{p.tip}</span>
-                <span className="pick-odds">{p.odds}</span>
+          {articles.map(article => (
+            <div key={article.slug} className="pick-card">
+              <div className="pick-card-header">
+                <span className="pick-sport-badge" style={{ background: `${SPORT_COLOR[article.sport]}20`, color: SPORT_COLOR[article.sport], border: `1px solid ${SPORT_COLOR[article.sport]}40` }}>
+                  {SPORT_EMOJI[article.sport]} {article.sport}
+                </span>
+                <span className="pick-league">{article.league}</span>
               </div>
-              <div className="conf-bar">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className={i <= p.conf ? 'conf-dot conf-dot-on' : 'conf-dot'} />
-                ))}
+              <div className="pick-card-body">
+                <div className="pick-title">{article.title}</div>
+                <div className="pick-preview">{getPreview(article.content)}</div>
+                <div className="pick-box">
+                  <div>
+                    <div className="pick-label">Our Pick</div>
+                    <div className="pick-val">{article.prediction?.split('@')[0]?.trim()}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div className="pick-label">Odds</div>
+                    <div className="pick-odds">{article.odds}</div>
+                  </div>
+                </div>
               </div>
-              <div className="conf-text">
-                {p.conf >= 5 ? 'Very high confidence' : p.conf >= 4 ? 'High confidence' : 'Medium confidence'}
+              <div className="pick-card-footer">
+                <span className="pick-date">{new Date(article.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                <a href={`/predictions/${article.slug}/`} className="pick-btn">READ ANALYSIS &rarr;</a>
               </div>
-            </a>
+            </div>
           ))}
         </div>
 
-        <div className="aff-inline">
-          <div>
-            <div className="aff-inline-title">🎯 Bet365 — Up to £100 Welcome Bonus</div>
-            <div className="aff-inline-sub">Use our picks + the bonus for maximum value. New customers only.</div>
-            <div className="aff-inline-disclaimer">18+ · Gamble Responsibly · T&Cs apply</div>
+        <div className="bm-strip">
+          <div className="bm-strip-title">&#127942; Top Bookmakers — Claim Your Bonus</div>
+          <div className="bm-grid">
+            {[
+              { name: 'Bet365', bonus: 'Up to £100', url: 'https://www.bet365.com' },
+              { name: 'William Hill', bonus: '£30 Free Bet', url: 'https://www.williamhill.com' },
+              { name: 'DraftKings', bonus: '$200 Bonus', url: 'https://www.draftkings.com' },
+              { name: 'FanDuel', bonus: '$1000 NSF Bet', url: 'https://www.fanduel.com' },
+              { name: 'Betway', bonus: '€30 Free Bet', url: 'https://www.betway.com' },
+              { name: 'Unibet', bonus: '€40 Bonus', url: 'https://www.unibet.com' },
+            ].map(bm => (
+              <div key={bm.name} className="bm-item">
+                <div className="bm-name">{bm.name}</div>
+                <div className="bm-bonus">{bm.bonus}</div>
+                <a href={bm.url} target="_blank" rel="noopener noreferrer" className="bm-btn">CLAIM &rarr;</a>
+              </div>
+            ))}
           </div>
-          <a href="#" className="btn-primary">CLAIM BONUS →</a>
         </div>
       </div>
 
-      <footer>
-        <div className="footer-inner">
-          <div>
-            <div className="footer-logo">Ai<span className="logo-accent">Picks</span>Pro</div>
-            <p className="footer-about">AI-powered sports predictions for football, basketball, tennis and American football. Updated daily by our AI agents.</p>
-          </div>
-          <div>
-            <div className="footer-col-title">Sports</div>
-            <div className="footer-links">
-              <a href="/football/">Football</a>
-              <a href="/basketball/">Basketball</a>
-              <a href="/tennis/">Tennis</a>
-              <a href="/nfl/">NFL</a>
-              <a href="#">Ice Hockey</a>
-            </div>
-          </div>
-          <div>
-            <div className="footer-col-title">Resources</div>
-            <div className="footer-links">
-              <a href="/tips-today/">Today&apos;s Tips</a>
-              <a href="#">Bookmaker Reviews</a>
-              <a href="#">Betting Guides</a>
-            </div>
-          </div>
-          <div>
-            <div className="footer-col-title">Info</div>
-            <div className="footer-links">
-              <a href="#">About</a>
-              <a href="#">Privacy Policy</a>
-              <a href="#">Affiliate Disclosure</a>
-              <a href="#">Responsible Gambling</a>
-              <a href="#">Contact</a>
-            </div>
-          </div>
-        </div>
-        <div className="footer-bottom">
-          <span>© 2026 AiPicksPro. All rights reserved.</span>
-          <span>Affiliate disclosure: We earn commissions from partner bookmakers.</span>
-        </div>
-      </footer>
-
       <div className="rg-bar">
-        <strong style={{ color: '#fff' }}>⚠ Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss.{' '}
-        <a href="#" style={{ color: '#8a8f99', textDecoration: 'underline' }}>GamCare (UK) · NCPG (US)</a>
+        <strong style={{ color: '#fff' }}>&#9888; Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss. AiPicksPro may receive commission from bookmakers.
       </div>
     </>
   )
