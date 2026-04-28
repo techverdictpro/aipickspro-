@@ -16,28 +16,57 @@ const AFFILIATES = [
 ]
 
 function getArticle(slug: string) {
-  const categories = ['football', 'basketball', 'tennis', 'nfl', 'general']
-  for (const category of categories) {
-    const filePath = path.join(process.cwd(), 'content', 'predictions', category, `${slug}.mdx`)
-    if (fs.existsSync(filePath)) {
-      const raw = fs.readFileSync(filePath, 'utf-8')
+  const sports = ['football', 'basketball', 'tennis', 'nfl']
+
+  for (const sport of sports) {
+    const baseDir = path.join(process.cwd(), 'content', 'predictions', sport)
+    if (!fs.existsSync(baseDir)) continue
+
+    // Check flat files
+    const flatPath = path.join(baseDir, `${slug}.mdx`)
+    if (fs.existsSync(flatPath)) {
+      const raw = fs.readFileSync(flatPath, 'utf-8')
       const { data, content } = matter(raw)
-      return { ...data, content, category } as any
+      return { ...data, content } as any
+    }
+
+    // Check subfolders
+    const entries = fs.readdirSync(baseDir)
+    for (const entry of entries) {
+      const entryPath = path.join(baseDir, entry)
+      if (fs.statSync(entryPath).isDirectory()) {
+        const subPath = path.join(entryPath, `${slug}.mdx`)
+        if (fs.existsSync(subPath)) {
+          const raw = fs.readFileSync(subPath, 'utf-8')
+          const { data, content } = matter(raw)
+          return { ...data, content } as any
+        }
+      }
     }
   }
   return null
 }
 
 export async function generateStaticParams() {
-  const categories = ['football', 'basketball', 'tennis', 'nfl', 'general']
+  const sports = ['football', 'basketball', 'tennis', 'nfl']
   const slugs: { slug: string }[] = []
-  for (const category of categories) {
-    const dir = path.join(process.cwd(), 'content', 'predictions', category)
-    if (fs.existsSync(dir)) {
-      const files = fs.readdirSync(dir).filter((f: string) => f.endsWith('.mdx'))
-      files.forEach((f: string) => slugs.push({ slug: f.replace('.mdx', '') }))
+
+  for (const sport of sports) {
+    const baseDir = path.join(process.cwd(), 'content', 'predictions', sport)
+    if (!fs.existsSync(baseDir)) continue
+
+    const entries = fs.readdirSync(baseDir)
+    for (const entry of entries) {
+      const entryPath = path.join(baseDir, entry)
+      if (entry.endsWith('.mdx')) {
+        slugs.push({ slug: entry.replace('.mdx', '') })
+      } else if (fs.statSync(entryPath).isDirectory()) {
+        const subFiles = fs.readdirSync(entryPath).filter(f => f.endsWith('.mdx'))
+        subFiles.forEach(f => slugs.push({ slug: f.replace('.mdx', '') }))
+      }
     }
   }
+
   return slugs
 }
 
@@ -174,14 +203,14 @@ export default async function PredictionPage({ params }: Props) {
 
         <div className="inline-cta">
           <div>
-            <div className="inline-cta-text">🎯 Best odds at Bet365</div>
+            <div className="inline-cta-text">&#127919; Best odds at Bet365</div>
             <div className="inline-cta-sub">Up to £100 Welcome Bonus · New customers only · 18+ T&Cs apply</div>
           </div>
           <a href="https://www.bet365.com" target="_blank" rel="noopener noreferrer" className="bet-btn">CLAIM BONUS &rarr;</a>
         </div>
 
         <div className="aff-section">
-          <div className="aff-section-title">🏆 Best Bookmakers for This Match</div>
+          <div className="aff-section-title">&#127942; Best Bookmakers for This Match</div>
           <div className="aff-section-sub">Compare bonuses and claim your welcome offer</div>
           <div className="aff-grid">
             {AFFILIATES.map((bm) => (
@@ -202,7 +231,7 @@ export default async function PredictionPage({ params }: Props) {
       </div>
 
       <div className="rg-bar">
-        <strong style={{ color: '#fff' }}>⚠ Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss.
+        <strong style={{ color: '#fff' }}>&#9888; Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss.
       </div>
     </>
   )
