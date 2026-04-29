@@ -21,6 +21,15 @@ jobs:
       - name: Install agent dependencies
         run: cd agents && npm ci
 
+      - name: Run Cleanup Agent
+        run: cd agents && node cleanup-agent.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_PAT }}
+          GITHUB_OWNER: techverdictpro
+          GITHUB_REPO: aipickspro-
+
       - name: Run Stats Agent
         run: cd agents && node stats-agent.js
         env:
@@ -46,6 +55,16 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_PAT }}
+          GITHUB_OWNER: techverdictpro
+          GITHUB_REPO: aipickspro-
+
+      - name: Run Results Agent
+        run: cd agents && node results-agent.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_PAT }}
           GITHUB_OWNER: techverdictpro
           GITHUB_REPO: aipickspro-
