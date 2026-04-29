@@ -22,7 +22,7 @@ const SPORT_COLOR: Record<string, string> = {
   football: '#4a9eff', basketball: '#e84545', tennis: '#2ecc8a', nfl: '#f39c12'
 }
 
-function getRecentArticles(limit = 6): Article[] {
+function getAllArticles(): Article[] {
   const sports = ['football', 'basketball', 'tennis', 'nfl']
   const articles: Article[] = []
   const weekAgo = new Date(Date.now() - 7 * 24 * 3600000).toISOString().split('T')[0]
@@ -37,21 +37,19 @@ function getRecentArticles(limit = 6): Article[] {
       if (entry.endsWith('.mdx')) {
         const raw = fs.readFileSync(entryPath, 'utf-8')
         const { data, content } = matter(raw)
-        if (data.date >= weekAgo) articles.push({ ...data, sport, content } as Article)
+        if (data.date >= weekAgo) articles.push({ ...data, sport, slug: entry.replace('.mdx', ''), content } as Article)
       } else if (fs.statSync(entryPath).isDirectory()) {
         const files = fs.readdirSync(entryPath).filter(f => f.endsWith('.mdx'))
         for (const file of files) {
           const raw = fs.readFileSync(path.join(entryPath, file), 'utf-8')
           const { data, content } = matter(raw)
-          if (data.date >= weekAgo) articles.push({ ...data, sport, content } as Article)
+          if (data.date >= weekAgo) articles.push({ ...data, sport, slug: file.replace('.mdx', ''), content } as Article)
         }
       }
     }
   }
 
-  return articles
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, limit)
+  return articles.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 }
 
 function getPreview(content: string): string {
@@ -60,33 +58,17 @@ function getPreview(content: string): string {
 }
 
 export default function HomePage() {
-  const articles = getRecentArticles(9)
-  const totalCount = (() => {
-    const sports = ['football', 'basketball', 'tennis', 'nfl']
-    let count = 0
-    const weekAgo = new Date(Date.now() - 7 * 24 * 3600000).toISOString().split('T')[0]
-    for (const sport of sports) {
-      const baseDir = path.join(process.cwd(), 'content', 'predictions', sport)
-      if (!fs.existsSync(baseDir)) continue
-      const entries = fs.readdirSync(baseDir)
-      for (const entry of entries) {
-        const entryPath = path.join(baseDir, entry)
-        if (entry.endsWith('.mdx')) {
-          const raw = fs.readFileSync(entryPath, 'utf-8')
-          const { data } = matter(raw)
-          if (data.date >= weekAgo) count++
-        } else if (fs.statSync(entryPath).isDirectory()) {
-          const files = fs.readdirSync(entryPath).filter(f => f.endsWith('.mdx'))
-          for (const file of files) {
-            const raw = fs.readFileSync(path.join(entryPath, file), 'utf-8')
-            const { data } = matter(raw)
-            if (data.date >= weekAgo) count++
-          }
-        }
-      }
-    }
-    return count
-  })()
+  const allArticles = getAllArticles()
+  const featured = allArticles.slice(0, 9)
+
+  const sportCounts = {
+    football: allArticles.filter(a => a.sport === 'football').length,
+    basketball: allArticles.filter(a => a.sport === 'basketball').length,
+    tennis: allArticles.filter(a => a.sport === 'tennis').length,
+    nfl: allArticles.filter(a => a.sport === 'nfl').length,
+  }
+
+  const total = allArticles.length
 
   return (
     <>
@@ -105,19 +87,35 @@ export default function HomePage() {
         .hero-label { font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #e8f042; margin-bottom: 16px; }
         .hero-title { font-size: 56px; font-weight: 900; line-height: 0.95; text-transform: uppercase; margin-bottom: 20px; }
         .hero-title em { color: #e8f042; font-style: normal; }
-        .hero-sub { font-size: 16px; color: #8a8f99; line-height: 1.7; margin-bottom: 32px; max-width: 480px; }
-        .hero-cta { background: #e8f042; color: #000; padding: 14px 32px; border-radius: 4px; font-size: 15px; font-weight: 800; display: inline-block; letter-spacing: 0.04em; }
+        .hero-sub { font-size: 16px; color: #8a8f99; line-height: 1.7; margin-bottom: 32px; }
+        .hero-cta { background: #e8f042; color: #000; padding: 14px 32px; border-radius: 4px; font-size: 15px; font-weight: 800; display: inline-block; }
         .hero-cta:hover { background: #c8d435; }
         .hero-stats { display: flex; gap: 32px; margin-top: 32px; }
         .hero-stat strong { display: block; font-size: 32px; font-weight: 900; color: #e8f042; }
         .hero-stat span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8a8f99; }
-        .affiliates-bar { background: #0d1019; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 32px; overflow: hidden; }
-        .affiliates-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 32px; }
+        .hero-cards { display: flex; flex-direction: column; gap: 12px; }
+        .hero-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 14px 18px; display: block; transition: border-color 0.2s; }
+        .hero-card:hover { border-color: rgba(232,240,66,0.3); }
+        .hero-card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .hero-card-sport { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        .hero-card-league { font-size: 10px; color: #8a8f99; }
+        .hero-card-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+        .hero-card-bottom { display: flex; align-items: center; justify-content: space-between; }
+        .hero-card-pick { font-size: 12px; color: #e8f042; font-weight: 700; }
+        .hero-card-odds { font-size: 20px; font-weight: 900; color: #e8f042; }
+        .affiliates-bar { background: #0d1019; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 32px; }
+        .affiliates-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 32px; flex-wrap: wrap; }
         .affiliates-label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8f99; white-space: nowrap; }
-        .aff-links { display: flex; gap: 20px; flex-wrap: wrap; }
-        .aff-link { font-size: 13px; font-weight: 700; color: #f0ede6; padding: 5px 16px; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; transition: border-color 0.2s; }
+        .aff-links { display: flex; gap: 12px; flex-wrap: wrap; }
+        .aff-link { font-size: 13px; font-weight: 700; color: #f0ede6; padding: 5px 14px; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; }
         .aff-link:hover { border-color: #e8f042; color: #e8f042; }
         .main { max-width: 1200px; margin: 0 auto; padding: 48px 32px; }
+        .sports-nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 48px; }
+        .sport-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 20px; display: flex; align-items: center; gap: 14px; transition: border-color 0.2s; }
+        .sport-card:hover { border-color: rgba(232,240,66,0.3); }
+        .sport-emoji { font-size: 28px; }
+        .sport-name { font-size: 15px; font-weight: 800; text-transform: uppercase; }
+        .sport-count { font-size: 12px; color: #8a8f99; margin-top: 2px; }
         .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
         .section-title { font-size: 22px; font-weight: 900; text-transform: uppercase; }
         .section-title em { color: #e8f042; font-style: normal; }
@@ -130,7 +128,7 @@ export default function HomePage() {
         .pick-sport-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 10px; border-radius: 3px; }
         .pick-league { font-size: 11px; color: #8a8f99; }
         .pick-card-body { padding: 16px; flex: 1; }
-        .pick-title { font-size: 14px; font-weight: 700; line-height: 1.3; margin-bottom: 8px; color: #f0ede6; }
+        .pick-title { font-size: 14px; font-weight: 700; line-height: 1.3; margin-bottom: 8px; }
         .pick-preview { font-size: 12px; color: #8a8f99; line-height: 1.5; margin-bottom: 12px; }
         .pick-box { background: rgba(232,240,66,0.08); border: 1px solid rgba(232,240,66,0.2); border-radius: 4px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; }
         .pick-label { font-size: 10px; color: #8a8f99; margin-bottom: 2px; }
@@ -140,12 +138,6 @@ export default function HomePage() {
         .pick-date { font-size: 11px; color: #8a8f99; }
         .pick-btn { background: #e8f042; color: #000; font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 3px; }
         .pick-btn:hover { background: #c8d435; }
-        .sports-nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 48px; }
-        .sport-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 20px; display: flex; align-items: center; gap: 14px; transition: border-color 0.2s; }
-        .sport-card:hover { border-color: rgba(232,240,66,0.3); }
-        .sport-emoji { font-size: 28px; }
-        .sport-name { font-size: 15px; font-weight: 800; text-transform: uppercase; }
-        .sport-count { font-size: 12px; color: #8a8f99; margin-top: 2px; }
         .bm-strip { background: #0d1019; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 24px; margin-bottom: 48px; }
         .bm-strip-title { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8a8f99; margin-bottom: 16px; }
         .bm-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
@@ -154,8 +146,8 @@ export default function HomePage() {
         .bm-bonus { font-size: 10px; color: #2ecc8a; margin-bottom: 8px; }
         .bm-btn { background: #e8f042; color: #000; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 3px; display: inline-block; }
         .rg-bar { background: rgba(232,69,69,0.05); border-top: 1px solid rgba(232,69,69,0.15); padding: 12px 32px; text-align: center; font-size: 11px; color: #8a8f99; }
-        @media (max-width: 1000px) { .picks-grid { grid-template-columns: repeat(2, 1fr); } .bm-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 700px) { .hero-inner { grid-template-columns: 1fr; } .hero-title { font-size: 36px; } .picks-grid { grid-template-columns: 1fr; } .sports-nav { grid-template-columns: repeat(2, 1fr); } .nav-links { display: none; } .bm-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 1000px) { .picks-grid { grid-template-columns: repeat(2,1fr); } .bm-grid { grid-template-columns: repeat(3,1fr); } }
+        @media (max-width: 700px) { .hero-inner { grid-template-columns: 1fr; } .hero-title { font-size: 36px; } .picks-grid { grid-template-columns: 1fr; } .sports-nav { grid-template-columns: repeat(2,1fr); } .nav-links { display: none; } .bm-grid { grid-template-columns: repeat(2,1fr); } }
       `}</style>
 
       <nav>
@@ -175,25 +167,25 @@ export default function HomePage() {
           <div>
             <div className="hero-label">&#129302; AI-Powered Sports Analysis</div>
             <h1 className="hero-title">The <em>Smarter</em><br />Way to Bet</h1>
-            <p className="hero-sub">Our AI agents analyse thousands of data points — form, injuries, head-to-head, market movement — to deliver daily picks for {totalCount}+ events across football, NBA, tennis and more.</p>
+            <p className="hero-sub">Our AI agents analyse thousands of data points — form, injuries, head-to-head, market movement — delivering daily picks across {total}+ events in 20+ competitions.</p>
             <a href="/tips-today/" className="hero-cta">TODAY&apos;S FREE TIPS &rarr;</a>
             <div className="hero-stats">
               <div className="hero-stat"><strong>74%</strong><span>Win Rate</span></div>
-              <div className="hero-stat"><strong>{totalCount}+</strong><span>Tips This Week</span></div>
+              <div className="hero-stat"><strong>{total}+</strong><span>Tips This Week</span></div>
               <div className="hero-stat"><strong>20+</strong><span>Competitions</span></div>
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {articles.slice(0, 3).map(article => (
-              <a key={article.slug} href={`/predictions/${article.slug}/`} style={{ background: '#111418', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '14px 18px', display: 'block', transition: 'border-color 0.2s' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: SPORT_COLOR[article.sport] }}>{SPORT_EMOJI[article.sport]} {article.sport}</span>
-                  <span style={{ fontSize: '10px', color: '#8a8f99' }}>{article.league}</span>
+          <div className="hero-cards">
+            {allArticles.slice(0, 3).map(article => (
+              <a key={article.slug} href={`/predictions/${article.slug}/`} className="hero-card">
+                <div className="hero-card-meta">
+                  <span className="hero-card-sport" style={{ color: SPORT_COLOR[article.sport] }}>{SPORT_EMOJI[article.sport]} {article.sport}</span>
+                  <span className="hero-card-league">{article.league}</span>
                 </div>
-                <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>{article.title}</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '12px', color: '#e8f042', fontWeight: 700 }}>{article.prediction?.split('@')[0]?.trim()}</span>
-                  <span style={{ fontSize: '20px', fontWeight: 900, color: '#e8f042' }}>{article.odds}</span>
+                <div className="hero-card-title">{article.title}</div>
+                <div className="hero-card-bottom">
+                  <span className="hero-card-pick">{article.prediction?.split('@')[0]?.trim()}</span>
+                  <span className="hero-card-odds">{article.odds}</span>
                 </div>
               </a>
             ))}
@@ -221,23 +213,20 @@ export default function HomePage() {
 
       <div className="main">
         <div className="sports-nav">
-          {[
+          {([
             { sport: 'football', href: '/football/', label: 'Football' },
             { sport: 'basketball', href: '/basketball/', label: 'Basketball' },
             { sport: 'tennis', href: '/tennis/', label: 'Tennis' },
             { sport: 'nfl', href: '/nfl/', label: 'NFL' },
-          ].map(s => {
-            const count = articles.filter(a => a.sport === s.sport).length
-            return (
-              <a key={s.sport} href={s.href} className="sport-card">
-                <div className="sport-emoji">{SPORT_EMOJI[s.sport]}</div>
-                <div>
-                  <div className="sport-name">{s.label}</div>
-                  <div className="sport-count">{count} tips this week</div>
-                </div>
-              </a>
-            )
-          })}
+          ] as const).map(s => (
+            <a key={s.sport} href={s.href} className="sport-card">
+              <div className="sport-emoji">{SPORT_EMOJI[s.sport]}</div>
+              <div>
+                <div className="sport-name">{s.label}</div>
+                <div className="sport-count">{sportCounts[s.sport]} tips this week</div>
+              </div>
+            </a>
+          ))}
         </div>
 
         <div className="section-header">
@@ -246,7 +235,7 @@ export default function HomePage() {
         </div>
 
         <div className="picks-grid">
-          {articles.map(article => (
+          {featured.map(article => (
             <div key={article.slug} className="pick-card">
               <div className="pick-card-header">
                 <span className="pick-sport-badge" style={{ background: `${SPORT_COLOR[article.sport]}20`, color: SPORT_COLOR[article.sport], border: `1px solid ${SPORT_COLOR[article.sport]}40` }}>
