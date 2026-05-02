@@ -10,7 +10,6 @@ const REPO = process.env.GITHUB_REPO;
 
 function getContentPath(sport, league) {
   const leagueMap = {
-    // Football
     'Premier League': 'premier-league',
     'Championship': 'championship',
     'League One': 'league-one',
@@ -43,14 +42,11 @@ function getContentPath(sport, league) {
     'Austrian Bundesliga': 'austrian-bundesliga',
     'Swiss Super League': 'swiss-super-league',
     'Super League Greece': 'super-league-greece',
-    // Basketball
     'NBA': 'nba',
-    // Tennis
     'Roland Garros ATP': 'roland-garros',
     'Roland Garros WTA': 'roland-garros',
     'ATP': 'atp',
     'WTA': 'wta',
-    // NFL
     'NFL': 'nfl',
   };
 
@@ -65,7 +61,7 @@ function getContentPath(sport, league) {
 
 function buildMDX(article) {
   const date = new Date(article.published_at).toISOString().split('T')[0];
-  const title = article.title.replace(/"/g, "'");
+  const title = (article.title || '').replace(/"/g, "'");
   const excerpt = (article.excerpt || '').replace(/"/g, "'");
   const meta = (article.meta_description || '').replace(/"/g, "'");
   const prediction = (article.prediction || '').replace(/"/g, "'");
@@ -82,6 +78,7 @@ prediction: "${prediction}"
 odds: "${article.odds || ''}"
 confidence: ${article.confidence || 3}
 bookmaker: "${article.bookmaker || 'Bet365'}"
+result: "${article.result || 'pending'}"
 ---
 
 ${article.content}
@@ -126,34 +123,69 @@ async function publishArticle(article) {
 async function runPublisherAgent() {
   console.log('Publisher Agent starting...');
 
+  const today = new Date().toISOString().split('T')[0];
+  const todayStart = `${today}T00:00:00.000Z`;
+
+  // Get articles published today that haven't been pushed to GitHub yet
   const { data: articles, error } = await supabase
     .from('articles')
     .select('*')
-    .eq('status', 'ready');
+    .gte('published_at', todayStart)
+    .eq('github_published', false);
+
+  // Fallback: if github_published column doesn't exist, get today's articles
+  if (error && error.message.includes('github_published')) {
+    console.log('Using fallback query...');
+    const { data: fallbackArticles, error: fallbackError } = await supabase
+      .from('articles')
+      .select('*')
+      .gte('published_at', todayStart);
+
+    if (fallbackError) { console.error('DB error:', fallbackError.message); return; }
+    if (!fallbackArticles?.length) { console.log('No articles for today'); return; }
+
+    console.log(`Publishing ${fallbackArticles.length} articles...`);
+    let published = 0;
+
+    for (const article of fallbackArticles) {
+      console.log(`→ ${article.title?.substring(0, 55)}...`);
+      try {
+        const path = await publishArticle(article);
+        console.log(`  → ${path}`);
+        published++;
+      } catch (err) {
+        console.error(`  Error: ${err.message}`);
+      }
+      await new Promise(r => setTimeout(r, 800));
+    }
+
+    await supabase.from('agent_logs').insert({
+      agent: 'publisher-agent',
+      status: 'success',
+      message: `Published ${published} articles to GitHub`
+    });
+
+    console.log(`\nPublisher Agent completed! Published ${published} articles.`);
+    return;
+  }
 
   if (error) { console.error('DB error:', error.message); return; }
-  if (!articles?.length) { console.log('No articles ready to publish'); return; }
+  if (!articles?.length) { console.log('No new articles to publish'); return; }
 
-  console.log(`Publishing ${articles.length} articles...\n`);
-
+  console.log(`Publishing ${articles.length} articles...`);
   let published = 0;
-  for (const article of articles) {
-    console.log(`→ ${article.title.substring(0, 55)}...`);
 
+  for (const article of articles) {
+    console.log(`→ ${article.title?.substring(0, 55)}...`);
     try {
       const path = await publishArticle(article);
       console.log(`  → ${path}`);
-
-      await supabase.from('articles')
-        .update({ status: 'published' })
-        .eq('id', article.id);
-
+      await supabase.from('articles').update({ github_published: true }).eq('id', article.id);
       published++;
     } catch (err) {
       console.error(`  Error: ${err.message}`);
     }
-
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 800));
   }
 
   await supabase.from('agent_logs').insert({
