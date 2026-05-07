@@ -24,8 +24,7 @@ function getLeagueSlug(league) {
     'Brasileirao': 'brasileirao', 'Primera Division Argentina': 'primera-division-argentina',
     'Belgian First Division': 'belgian-first-division', 'Austrian Bundesliga': 'austrian-bundesliga',
     'Super League Greece': 'super-league-greece', 'NBA': 'nba',
-    'Roland Garros ATP': 'roland-garros', 'Roland Garros WTA': 'roland-garros',
-    'NFL': 'nfl',
+    'Roland Garros ATP': 'roland-garros', 'Roland Garros WTA': 'roland-garros', 'NFL': 'nfl',
   };
   return map[league] || league.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 }
@@ -58,15 +57,22 @@ ${article.content}
 `;
 }
 
-async function publishToGitHub(path, content, title) {
-  const encoded = Buffer.from(content).toString('base64');
+async function fileExistsInGitHub(path) {
   try {
-    const { data: existing } = await octokit.repos.getContent({ owner: OWNER, repo: REPO, path }).catch(() => ({ data: null }));
-    if (existing?.sha) {
-      await octokit.repos.createOrUpdateFileContents({ owner: OWNER, repo: REPO, path, message: `Update: ${title.substring(0, 50)}`, content: encoded, sha: existing.sha });
-    } else {
-      await octokit.repos.createOrUpdateFileContents({ owner: OWNER, repo: REPO, path, message: `Add: ${title.substring(0, 50)}`, content: encoded });
-    }
+    await octokit.repos.getContent({ owner: OWNER, repo: REPO, path });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function createFileInGitHub(path, content, title) {
+  try {
+    await octokit.repos.createOrUpdateFileContents({
+      owner: OWNER, repo: REPO, path,
+      message: `Add: ${title.substring(0, 60)}`,
+      content: Buffer.from(content).toString('base64')
+    });
     return true;
   } catch (err) {
     console.error(`  GitHub error: ${err.message}`);
@@ -76,7 +82,9 @@ async function publishToGitHub(path, content, title) {
 
 async function runPublisherAgent() {
   console.log('Publisher Agent starting...');
+  console.log('Time:', new Date().toISOString());
 
+  // Only get articles not yet published to GitHub
   const { data: articles, error } = await supabase
     .from('articles')
     .select('*')
@@ -88,30 +96,44 @@ async function runPublisherAgent() {
   if (error) { console.error('DB error:', error.message); return; }
   if (!articles?.length) { console.log('No new articles to publish'); return; }
 
-  console.log(`Publishing ${articles.length} articles...\n`);
+  console.log(`Found ${articles.length} unpublished articles\n`);
+
   let published = 0;
+  let skipped = 0;
 
   for (const article of articles) {
     const filePath = getFilePath(article.sport, article.league, article.slug);
-    const mdx = buildMDX(article);
 
-    const ok = await publishToGitHub(filePath, mdx, article.title);
+    // CRITICAL: Check if file already exists - never overwrite
+    const exists = await fileExistsInGitHub(filePath);
+    if (exists) {
+      console.log(`  SKIP (exists): ${article.slug.substring(0, 50)}`);
+      // Mark as published in DB so we don't check again
+      await supabase.from('articles').update({ github_published: true }).eq('id', article.id);
+      skipped++;
+      continue;
+    }
+
+    // Only create new files
+    const mdx = buildMDX(article);
+    const ok = await createFileInGitHub(filePath, mdx, article.title);
+
     if (ok) {
       await supabase.from('articles').update({ github_published: true }).eq('id', article.id);
-      console.log(`✓ ${article.home_team || article.title?.substring(0, 40)}`);
+      console.log(`  ✓ ${article.title?.substring(0, 55)}`);
       published++;
     }
 
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 500));
   }
 
   await supabase.from('agent_logs').insert({
     agent: 'publisher-agent',
     status: 'success',
-    message: `Published ${published} articles to GitHub`
+    message: `Published ${published} new articles, skipped ${skipped} existing`
   });
 
-  console.log(`\nPublisher Agent completed! Published ${published} articles.`);
+  console.log(`\nDone! Published: ${published}, Skipped: ${skipped}`);
 }
 
 runPublisherAgent().catch(e => console.error('FATAL:', e.message));
