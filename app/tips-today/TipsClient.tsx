@@ -91,9 +91,9 @@ export default function TipsClient({ articles }: { articles: Article[] }) {
         .tip-main { flex: 1; min-width: 0; }
         .tip-title { font-size: 13px; font-weight: 700; color: #f0ede6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .tip-preview { font-size: 11px; color: #8a8f99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-        .tip-pick { flex-shrink: 0; text-align: right; }
+        .tip-pick { flex-shrink: 0; text-align: right; min-width: 100px; }
         .tip-pick-val { font-size: 11px; font-weight: 700; color: #e8f042; }
-        .tip-pick-odds { font-size: 17px; font-weight: 900; color: #e8f042; }
+        .tip-pick-odds { font-size: 16px; font-weight: 900; color: #e8f042; }
         .tip-conf { display: flex; gap: 2px; justify-content: flex-end; margin-top: 2px; }
         .cdot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.1); }
         .cdot-on { background: #e8f042; }
@@ -119,7 +119,7 @@ export default function TipsClient({ articles }: { articles: Article[] }) {
       <div className="page-header">
         <div className="page-header-inner">
           <div>
-            <div className="page-date">&#128197; {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            <div className="page-date">📅 {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
             <h1 className="page-title">Today&apos;s <em>Tips</em></h1>
           </div>
           <div className="page-stats">
@@ -179,7 +179,7 @@ export default function TipsClient({ articles }: { articles: Article[] }) {
                     </div>
                     <div className="tip-pick">
                       <div className="tip-pick-val">{article.prediction?.split('@')[0]?.trim()}</div>
-                      <div className="tip-pick-odds">@ {article.odds}</div>
+                      <div className="tip-pick-odds">{article.odds ? `@ ${article.odds}` : '—'}</div>
                       <div className="tip-conf">{[1,2,3,4,5].map(i => <div key={i} className={i <= article.confidence ? 'cdot cdot-on' : 'cdot'} />)}</div>
                     </div>
                     <div className="tip-arrow">›</div>
@@ -192,7 +192,7 @@ export default function TipsClient({ articles }: { articles: Article[] }) {
       </div>
 
       <div className="rg-bar">
-        <strong style={{color:'#fff'}}>&#9888; Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss.
+        <strong style={{color:'#fff'}}>⚠ Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss.
       </div>
     </>
   )

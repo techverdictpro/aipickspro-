@@ -3,10 +3,18 @@ import path from 'path'
 import matter from 'gray-matter'
 import TipsClient from './TipsClient'
 
+function getSofiaDate() {
+  const now = new Date()
+  const sofiaOffset = 3 * 60
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000
+  const sofia = new Date(utc + sofiaOffset * 60000)
+  return sofia.toISOString().split('T')[0]
+}
+
 function getArticles() {
   const sports = ['football', 'basketball', 'tennis', 'nfl']
   const articles: any[] = []
-  const today = new Date().toISOString().split('T')[0]
+  const today = getSofiaDate()
 
   for (const sport of sports) {
     const baseDir = path.join(process.cwd(), 'content', 'predictions', sport)
@@ -21,22 +29,32 @@ function getArticles() {
         } else if (entry.endsWith('.mdx')) {
           const raw = fs.readFileSync(fullPath, 'utf-8')
           const { data, content } = matter(raw)
-          if (data.date === today && data.odds && data.odds !== 'N/A' && data.odds !== 'null') {
-            const lines = content.split('\n').filter((l: string) => l.trim() && !l.startsWith('---') && !l.startsWith('*'))
-            const preview = lines[2]?.substring(0, 120) || lines[0]?.substring(0, 120) || ''
-            articles.push({
-              slug: entry.replace('.mdx', ''),
-              title: data.title || '',
-              sport,
-              league: data.league || '',
-              date: data.date || '',
-              prediction: data.prediction || '',
-              odds: data.odds || '',
-              confidence: data.confidence || 3,
-              result: data.result || 'pending',
-              preview,
-            })
-          }
+
+          // Only today's date
+          if (data.date !== today) continue
+
+          const lines = content.split('\n').filter((l: string) =>
+            l.trim() && !l.startsWith('---') && !l.startsWith('*') &&
+            !l.includes('Kick-off:') && !l.includes('Odds:') &&
+            !l.includes('Form:') && !l.includes('Goals/game:')
+          )
+          const verdict = lines.find((l: string) => l.includes('VERDICT:'))
+          const preview = verdict
+            ? verdict.replace('VERDICT:', '').trim().substring(0, 120)
+            : lines.slice(1).find((l: string) => l.length > 20)?.substring(0, 120) || ''
+
+          articles.push({
+            slug: entry.replace('.mdx', ''),
+            title: data.title || '',
+            sport,
+            league: data.league || '',
+            date: data.date || '',
+            prediction: data.prediction || '',
+            odds: data.odds || '',
+            confidence: data.confidence || 3,
+            result: data.result || 'pending',
+            preview,
+          })
         }
       }
     }
@@ -44,7 +62,7 @@ function getArticles() {
     scan(baseDir)
   }
 
-  return articles.sort((a, b) => a.league.localeCompare(b.league))
+  return articles.sort((a: any, b: any) => a.league.localeCompare(b.league))
 }
 
 export default function TipsTodayPage() {
