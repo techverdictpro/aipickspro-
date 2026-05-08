@@ -66,32 +66,14 @@ async function fileExistsInGitHub(path) {
   }
 }
 
-async function createFileInGitHub(path, content, title) {
-  try {
-    await octokit.repos.createOrUpdateFileContents({
-      owner: OWNER, repo: REPO, path,
-      message: `Add: ${title.substring(0, 60)}`,
-      content: Buffer.from(content).toString('base64')
-    });
-    return true;
-  } catch (err) {
-    console.error(`  GitHub error: ${err.message}`);
-    return false;
-  }
-}
-
 async function runPublisherAgent() {
   console.log('Publisher Agent starting...');
   console.log('Time:', new Date().toISOString());
 
-  // Only get articles not yet published to GitHub
   const { data: articles, error } = await supabase
     .from('articles')
     .select('*')
-    .eq('github_published', false)
-    .not('odds', 'is', null)
-    .neq('odds', 'N/A')
-    .neq('odds', 'null');
+    .eq('github_published', false);
 
   if (error) { console.error('DB error:', error.message); return; }
   if (!articles?.length) { console.log('No new articles to publish'); return; }
@@ -104,24 +86,28 @@ async function runPublisherAgent() {
   for (const article of articles) {
     const filePath = getFilePath(article.sport, article.league, article.slug);
 
-    // CRITICAL: Check if file already exists - never overwrite
+    // Never overwrite existing files
     const exists = await fileExistsInGitHub(filePath);
     if (exists) {
-      console.log(`  SKIP (exists): ${article.slug.substring(0, 50)}`);
-      // Mark as published in DB so we don't check again
       await supabase.from('articles').update({ github_published: true }).eq('id', article.id);
       skipped++;
       continue;
     }
 
-    // Only create new files
     const mdx = buildMDX(article);
-    const ok = await createFileInGitHub(filePath, mdx, article.title);
+    const encoded = Buffer.from(mdx).toString('base64');
 
-    if (ok) {
+    try {
+      await octokit.repos.createOrUpdateFileContents({
+        owner: OWNER, repo: REPO, path: filePath,
+        message: `Add: ${article.title?.substring(0, 60)}`,
+        content: encoded
+      });
       await supabase.from('articles').update({ github_published: true }).eq('id', article.id);
-      console.log(`  ✓ ${article.title?.substring(0, 55)}`);
+      console.log(`✓ ${article.title?.substring(0, 55)}`);
       published++;
+    } catch (err) {
+      console.error(`✗ ${err.message}`);
     }
 
     await new Promise(r => setTimeout(r, 500));
@@ -130,7 +116,7 @@ async function runPublisherAgent() {
   await supabase.from('agent_logs').insert({
     agent: 'publisher-agent',
     status: 'success',
-    message: `Published ${published} new articles, skipped ${skipped} existing`
+    message: `Published ${published} new, skipped ${skipped} existing`
   });
 
   console.log(`\nDone! Published: ${published}, Skipped: ${skipped}`);
