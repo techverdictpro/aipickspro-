@@ -1,224 +1,285 @@
+// ============================================================
+// stats-agent.js — aipickspro.com (v7 — FINAL)
+// Runs once daily at 09:00 via daily-run.js.
+//
+// GUARANTEES:
+//   - Each match stored exactly once (external_id UNIQUE constraint)
+//   - Only future fixtures (2h+ from now)
+//   - Skips known external_ids before hitting the API
+//   - Cleans up matches older than 7 days at the start of each run
+// ============================================================
+
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
-const APISPORTS_KEY = process.env.APISPORTS_KEY;
-const FOOTBALL_KEY = process.env.FOOTBALL_DATA_KEY;
+const AF_KEY  = process.env.API_FOOTBALL_KEY;
+const AF_BASE = 'https://v3.football.api-sports.io';
 
-// api-sports.io uses only 2 requests per run:
-// 1. GET /fixtures?date=today (all football matches)
-// 2. GET /fixtures?date=tomorrow
-// That covers all leagues in one shot.
+if (!AF_KEY) { console.error('FATAL: API_FOOTBALL_KEY missing'); process.exit(1); }
 
-const LEAGUE_NAMES = {
-  39: 'Premier League', 140: 'La Liga', 78: 'Bundesliga',
-  135: 'Serie A', 61: 'Ligue 1', 2: 'Champions League',
-  3: 'Europa League', 848: 'Conference League', 40: 'Championship',
-  41: 'League One', 88: 'Eredivisie', 94: 'Primeira Liga',
-  179: 'Scottish Premiership', 203: 'Super Lig Turkey',
-  144: 'Belgian First Division', 197: 'Super League Greece',
-  218: 'Austrian Bundesliga', 13: 'Copa Libertadores',
-  11: 'Copa Sudamericana', 253: 'MLS', 262: 'Liga MX',
-  71: 'Brasileirao', 128: 'Primera Division Argentina',
-  307: 'Saudi Pro League',
-};
+function currentSeason() {
+  const now = new Date();
+  return now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+}
 
-const SPORT_MAP = {
-  39: 'football', 140: 'football', 78: 'football', 135: 'football',
-  61: 'football', 2: 'football', 3: 'football', 848: 'football',
-  40: 'football', 41: 'football', 88: 'football', 94: 'football',
-  179: 'football', 203: 'football', 144: 'football', 197: 'football',
-  218: 'football', 13: 'football', 11: 'football', 253: 'football',
-  262: 'football', 71: 'football', 128: 'football', 307: 'football',
-};
+const LEAGUES = [
+  { sport: 'football', name: 'Premier League',     id: 39  },
+  { sport: 'football', name: 'La Liga',            id: 140 },
+  { sport: 'football', name: 'Serie A',            id: 135 },
+  { sport: 'football', name: 'Bundesliga',         id: 78  },
+  { sport: 'football', name: 'Ligue 1',            id: 61  },
+  { sport: 'football', name: 'Champions League',   id: 2   },
+  { sport: 'football', name: 'Europa League',      id: 3   },
+  { sport: 'football', name: 'Conference League',  id: 848 },
+  { sport: 'football', name: 'Eredivisie',         id: 88  },
+  { sport: 'football', name: 'Primeira Liga',      id: 94  },
+  { sport: 'football', name: 'Super Lig',          id: 203 },
+  { sport: 'football', name: 'Belgian Pro League', id: 144 },
+  { sport: 'football', name: 'Scottish Premiership', id: 179 },
+  { sport: 'football', name: 'MLS',                id: 253 },
+];
 
-const TEAM_FORM = {
-  'Manchester City': { form: 'W-W-W-D-W', goals_scored: 2.8, goals_conceded: 0.8, xg: 2.6, injuries: 'None' },
-  'Arsenal': { form: 'W-W-D-W-L', goals_scored: 2.1, goals_conceded: 1.0, xg: 2.0, injuries: 'Odegaard doubtful' },
-  'Liverpool': { form: 'W-W-W-W-D', goals_scored: 2.6, goals_conceded: 0.9, xg: 2.4, injuries: 'None' },
-  'Chelsea': { form: 'W-D-W-L-W', goals_scored: 1.9, goals_conceded: 1.2, xg: 1.8, injuries: 'None' },
-  'Real Madrid': { form: 'W-W-W-W-D', goals_scored: 2.5, goals_conceded: 0.9, xg: 2.3, injuries: 'None' },
-  'Barcelona': { form: 'W-W-W-D-W', goals_scored: 3.1, goals_conceded: 0.7, xg: 2.9, injuries: 'None' },
-  'Bayern Munich': { form: 'W-W-L-W-W', goals_scored: 2.9, goals_conceded: 1.2, xg: 2.7, injuries: 'None' },
-  'Atletico Madrid': { form: 'W-D-W-L-W', goals_scored: 1.8, goals_conceded: 0.9, xg: 1.7, injuries: 'None' },
-  'Inter Milan': { form: 'W-W-W-D-W', goals_scored: 2.3, goals_conceded: 0.7, xg: 2.1, injuries: 'None' },
-  'AC Milan': { form: 'L-W-D-W-L', goals_scored: 1.6, goals_conceded: 1.3, xg: 1.5, injuries: 'None' },
-  'PSG': { form: 'W-W-W-W-W', goals_scored: 2.8, goals_conceded: 0.8, xg: 2.6, injuries: 'None' },
-  'Borussia Dortmund': { form: 'W-L-W-D-L', goals_scored: 1.9, goals_conceded: 1.5, xg: 1.8, injuries: 'None' },
-};
+const FIXTURES_PER_LEAGUE = 5;
+const MIN_HOURS_AHEAD     = 2;
+const KEEP_DAYS           = 7;
 
-async function fetchFixturesByDate(date) {
-  try {
-    const url = `https://v3.football.api-sports.io/fixtures?date=${date}`;
-    const res = await fetch(url, {
-      headers: {
-        'x-apisports-key': APISPORTS_KEY,
-        'x-rapidapi-host': 'v3.football.api-sports.io'
+const sleep  = (ms) => new Promise(r => setTimeout(r, ms));
+const round2 = (n)  => n == null ? null : Math.round(n * 100) / 100;
+
+function median(arr) {
+  const v = arr.filter(x => x != null && isFinite(x));
+  if (!v.length) return null;
+  const s = [...v].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+let quotaLeft = null;
+
+async function apiFetch(path) {
+  const res = await fetch(`${AF_BASE}${path}`, {
+    headers: { 'x-apisports-key': AF_KEY }
+  });
+  const rem = res.headers.get('x-ratelimit-requests-remaining');
+  if (rem != null) quotaLeft = parseInt(rem);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const d = await res.json();
+  if (d.errors && !Array.isArray(d.errors) && Object.keys(d.errors).length)
+    throw new Error(JSON.stringify(d.errors).slice(0, 100));
+  return d;
+}
+
+function extractOdds(resp) {
+  if (!resp?.length) return null;
+  const h = { home: [], draw: [], away: [] };
+  const t = {};
+  const b = { yes: [], no: [] };
+  for (const e of resp) {
+    for (const bm of e.bookmakers || []) {
+      for (const bet of bm.bets || []) {
+        const nm = (bet.name || '').toLowerCase();
+        if (bet.id === 1 || nm === 'match winner') {
+          for (const v of bet.values || []) {
+            const o = parseFloat(v.odd);
+            if (!isFinite(o)) continue;
+            if (v.value === 'Home') h.home.push(o);
+            else if (v.value === 'Draw') h.draw.push(o);
+            else if (v.value === 'Away') h.away.push(o);
+          }
+        } else if (bet.id === 5 || nm === 'goals over/under') {
+          for (const v of bet.values || []) {
+            const o = parseFloat(v.odd);
+            if (!isFinite(o)) continue;
+            const m = (v.value || '').match(/(Over|Under)\s+([\d.]+)/i);
+            if (!m) continue;
+            const pt = parseFloat(m[2]);
+            t[pt] ||= { over: [], under: [] };
+            t[pt][m[1].toLowerCase()].push(o);
+          }
+        } else if (bet.id === 8 || nm.includes('both teams')) {
+          for (const v of bet.values || []) {
+            const o = parseFloat(v.odd);
+            if (!isFinite(o)) continue;
+            if (v.value === 'Yes') b.yes.push(o);
+            else if (v.value === 'No') b.no.push(o);
+          }
+        }
       }
-    });
-
-    const remaining = res.headers.get('x-ratelimit-requests-remaining');
-    console.log(`  API requests remaining today: ${remaining}`);
-
-    const data = await res.json();
-    if (!data.response?.length) return [];
-
-    const matches = [];
-    for (const f of data.response) {
-      const leagueId = f.league?.id;
-      const leagueName = LEAGUE_NAMES[leagueId];
-      if (!leagueName) continue; // skip unknown leagues
-
-      const sport = SPORT_MAP[leagueId] || 'football';
-      const status = f.fixture?.status?.short;
-
-      // Only scheduled matches
-      if (!['NS', 'TBD'].includes(status)) continue;
-
-      const homeOdds = f.odds?.bookmakers?.[0]?.bets?.find(b => b.name === 'Match Winner')?.values?.find(v => v.value === 'Home')?.odd;
-      const drawOdds = f.odds?.bookmakers?.[0]?.bets?.find(b => b.name === 'Match Winner')?.values?.find(v => v.value === 'Draw')?.odd;
-      const awayOdds = f.odds?.bookmakers?.[0]?.bets?.find(b => b.name === 'Match Winner')?.values?.find(v => v.value === 'Away')?.odd;
-
-      matches.push({
-        sport,
-        league: leagueName,
-        league_id: String(leagueId),
-        country: f.league?.country || '',
-        home_team: f.teams?.home?.name || '',
-        away_team: f.teams?.away?.name || '',
-        match_date: new Date(f.fixture?.date).toISOString(),
-        status: 'upcoming',
-        home_odds: homeOdds ? parseFloat(homeOdds) : null,
-        draw_odds: drawOdds ? parseFloat(drawOdds) : null,
-        away_odds: awayOdds ? parseFloat(awayOdds) : null,
-      });
     }
-
-    return matches;
-  } catch (err) {
-    console.error(`  API error for ${date}:`, err.message);
-    return [];
   }
-}
-
-async function fetchFromFootballData(existingKeys) {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const in48h = new Date(Date.now() + 2 * 24 * 3600000).toISOString().split('T')[0];
-    const url = `https://api.football-data.org/v4/matches?dateFrom=${today}&dateTo=${in48h}&status=SCHEDULED,TIMED`;
-    const res = await fetch(url, { headers: { 'X-Auth-Token': FOOTBALL_KEY } });
-    const data = await res.json();
-
-    if (!data.matches?.length) return [];
-
-    const matches = [];
-    for (const m of data.matches) {
-      const key = `${m.homeTeam?.name}|${m.awayTeam?.name}`;
-      if (existingKeys.has(key)) continue;
-
-      matches.push({
-        sport: 'football',
-        league: m.competition?.name || 'Football',
-        league_id: m.competition?.code || 'FOOT',
-        country: m.competition?.area?.name || '',
-        home_team: m.homeTeam?.name || '',
-        away_team: m.awayTeam?.name || '',
-        match_date: new Date(m.utcDate).toISOString(),
-        status: 'upcoming',
-        home_odds: null,
-        draw_odds: null,
-        away_odds: null,
-      });
-    }
-
-    console.log(`  football-data.org: ${matches.length} extra matches`);
-    return matches;
-  } catch (err) {
-    console.error('  football-data.org error:', err.message);
-    return [];
+  let bp = null, bd = Infinity;
+  for (const pt of Object.keys(t)) {
+    const d = Math.abs(parseFloat(pt) - 2.5);
+    if (d < bd) { bd = d; bp = parseFloat(pt); }
   }
-}
-
-async function saveTeamStats(teamName, sport) {
-  const stats = TEAM_FORM[teamName] || {
-    form: 'Unknown', goals_scored: null, goals_conceded: null, xg: null, injuries: 'Check news',
+  const tb = bp != null ? t[bp] : null;
+  return {
+    home_odds:      round2(median(h.home)),
+    draw_odds:      round2(median(h.draw)),
+    away_odds:      round2(median(h.away)),
+    totals_point:   bp,
+    over_odds:      tb ? round2(median(tb.over))  : null,
+    under_odds:     tb ? round2(median(tb.under)) : null,
+    btts_yes_odds:  round2(median(b.yes)),
+    btts_no_odds:   round2(median(b.no)),
+    bookmaker_count: resp[0]?.bookmakers?.length || 0,
   };
-  await supabase.from('team_stats').upsert(
-    { team_name: teamName, sport, ...stats, updated_at: new Date().toISOString() },
-    { onConflict: 'team_name,sport' }
-  );
 }
 
-async function runStatsAgent() {
-  console.log('Stats Agent starting...');
-  console.log('Time:', new Date().toISOString());
+function extractStats(resp) {
+  if (!resp?.length) return {};
+  const p  = resp[0];
+  const hl = p.teams?.home?.last_5;
+  const al = p.teams?.away?.last_5;
+  const h2h = (p.h2h || []).slice(-5)
+    .map(m => ({
+      date:  m.fixture?.date?.split('T')[0],
+      home:  m.teams?.home?.name,
+      away:  m.teams?.away?.name,
+      score: m.goals?.home != null ? `${m.goals.home}-${m.goals.away}` : null,
+    }))
+    .filter(g => g.score);
+  const flat = (Array.isArray(p.league?.standings?.[0])
+    ? p.league.standings.flat()
+    : (p.league?.standings || []));
+  const hr = flat.find(s => s.team?.id === p.teams?.home?.id);
+  const ar = flat.find(s => s.team?.id === p.teams?.away?.id);
+  return {
+    home_form:          hl?.form || null,
+    away_form:          al?.form || null,
+    home_goals_for:     round2(parseFloat(hl?.goals?.for?.average?.total)),
+    home_goals_against: round2(parseFloat(hl?.goals?.against?.average?.total)),
+    away_goals_for:     round2(parseFloat(al?.goals?.for?.average?.total)),
+    away_goals_against: round2(parseFloat(al?.goals?.against?.average?.total)),
+    home_position:      hr?.rank || null,
+    away_position:      ar?.rank || null,
+    h2h:                h2h.length ? h2h : null,
+  };
+}
 
-  // Clear only old upcoming matches
-  const cutoff = new Date(Date.now() - 3 * 3600000).toISOString(); // older than 3 hours
-  await supabase.from('matches').delete().eq('status', 'upcoming').lt('created_at', cutoff);
-  console.log('Cleared old upcoming matches\n');
+async function run() {
+  console.log('Stats Agent v7 starting —', new Date().toISOString());
 
-  const today = new Date().toISOString().split('T')[0];
-  const tomorrow = new Date(Date.now() + 24 * 3600000).toISOString().split('T')[0];
+  // Verify API key + plan
+  try {
+    const s = await apiFetch('/status');
+    const r = s.response?.requests;
+    console.log(`API: ${s.response?.account?.email} | plan: ${s.response?.subscription?.plan} | quota: ${r?.current}/${r?.limit_day}`);
+    if (s.response?.subscription?.plan?.toLowerCase() === 'free') {
+      console.error('FATAL: Free plan cannot access current season.');
+      process.exit(1);
+    }
+    quotaLeft = r ? r.limit_day - r.current : null;
+  } catch (e) {
+    console.error('FATAL: API check failed —', e.message);
+    process.exit(1);
+  }
 
-  console.log(`Fetching fixtures for ${today} and ${tomorrow}...`);
+  // ── 7-day cleanup ─────────────────────────────────────────
+  const cutoffDate = new Date(Date.now() - KEEP_DAYS * 86400000).toISOString();
+  const { data: oldMatches } = await supabase
+    .from('matches')
+    .select('id')
+    .lt('match_date', cutoffDate);
 
-  // Only 2 API calls total for api-sports.io
-  const todayMatches = await fetchFixturesByDate(today);
-  await new Promise(r => setTimeout(r, 1000));
-  const tomorrowMatches = await fetchFixturesByDate(tomorrow);
+  if (oldMatches?.length) {
+    const oldIds = oldMatches.map(m => m.id);
+    await supabase.from('articles').delete().in('match_id', oldIds);
+    await supabase.from('matches').delete().in('id', oldIds);
+    console.log(`Cleaned up ${oldMatches.length} matches older than ${KEEP_DAYS} days`);
+  }
 
-  const allApiMatches = [...todayMatches, ...tomorrowMatches];
-  console.log(`  api-sports.io: ${allApiMatches.length} matches found`);
+  // ── Load known external_ids (DB-level dedup) ──────────────
+  const { data: known } = await supabase.from('matches').select('external_id');
+  const knownIds = new Set((known || []).map(m => String(m.external_id)));
+  console.log(`Known in DB: ${knownIds.size} matches`);
 
-  // Backup: football-data.org for extra matches
-  const existingKeys = new Set(allApiMatches.map(m => `${m.home_team}|${m.away_team}`));
-  const fdMatches = await fetchFromFootballData(existingKeys);
+  const futureOnly = Date.now() + MIN_HOURS_AHEAD * 3600000;
 
-  const allMatches = [...allApiMatches, ...fdMatches];
+  // ── Fetch fixtures per league ─────────────────────────────
+  const toEnrich = [];
+  for (const league of LEAGUES) {
+    try {
+      const d = await apiFetch(`/fixtures?league=${league.id}&season=${currentSeason()}&next=${FIXTURES_PER_LEAGUE}`);
+      const fresh = (d.response || []).filter(f => {
+        if (knownIds.has(String(f.fixture.id))) return false;
+        if (new Date(f.fixture.date).getTime() < futureOnly) return false;
+        return true;
+      });
+      if (fresh.length) console.log(`  ${league.name}: ${fresh.length} new (quota: ${quotaLeft ?? '?'})`);
+      for (const f of fresh) toEnrich.push({ f, league });
+    } catch (e) {
+      console.warn(`  ${league.name}: ${e.message}`);
+    }
+    await sleep(300);
+  }
 
-  // Deduplicate
-  const seen = new Set();
-  const unique = allMatches.filter(m => {
-    const key = `${m.home_team}|${m.away_team}|${m.league}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  console.log(`\nNew fixtures to enrich: ${toEnrich.length}`);
+  if (!toEnrich.length) {
+    console.log('Nothing new today.');
+    await supabase.from('agent_logs').insert({ agent: 'stats-agent', status: 'success', message: 'No new fixtures' });
+    return;
+  }
 
-  console.log(`\nTotal unique matches: ${unique.length}`);
+  // ── Enrich: odds + stats ──────────────────────────────────
+  const rows = [];
+  for (const { f, league } of toEnrich) {
+    const fid = f.fixture.id;
+    let odds = null, stats = {};
 
-  let saved = 0;
-  for (const match of unique) {
-    if (!match.home_team || !match.away_team) continue;
-    const { error } = await supabase.from('matches').upsert(match, {
-      onConflict: 'home_team,away_team,league'
+    try {
+      const od = await apiFetch(`/odds?fixture=${fid}`);
+      odds = extractOdds(od.response);
+      await sleep(300);
+    } catch (e) { console.warn(`  fid ${fid} odds: ${e.message}`); }
+
+    try {
+      const pd = await apiFetch(`/predictions?fixture=${fid}`);
+      stats = extractStats(pd.response);
+      await sleep(300);
+    } catch (e) { console.warn(`  fid ${fid} stats: ${e.message}`); }
+
+    rows.push({
+      sport:               league.sport,
+      league:              league.name,
+      home_team:           f.teams.home.name,
+      away_team:           f.teams.away.name,
+      match_date:          f.fixture.date,
+      external_id:         String(fid),
+      home_odds:           odds?.home_odds    ?? null,
+      draw_odds:           odds?.draw_odds    ?? null,
+      away_odds:           odds?.away_odds    ?? null,
+      totals_point:        odds?.totals_point ?? null,
+      over_odds:           odds?.over_odds    ?? null,
+      under_odds:          odds?.under_odds   ?? null,
+      btts_yes_odds:       odds?.btts_yes_odds ?? null,
+      btts_no_odds:        odds?.btts_no_odds  ?? null,
+      bookmaker_count:     odds?.bookmaker_count ?? 0,
+      ...stats,
+      status: 'upcoming',
     });
-    if (!error) saved++;
-  }
-  console.log(`Saved ${saved} matches`);
 
-  // Save team stats
-  const teams = new Set();
-  unique.forEach(m => {
-    if (m.home_team) teams.add(JSON.stringify({ name: m.home_team, sport: m.sport }));
-    if (m.away_team) teams.add(JSON.stringify({ name: m.away_team, sport: m.sport }));
-  });
-
-  for (const t of teams) {
-    const { name, sport } = JSON.parse(t);
-    await saveTeamStats(name, sport);
+    console.log(`  ✓ ${f.teams.home.name} vs ${f.teams.away.name} | 1X2: ${odds?.home_odds ?? '?'}/${odds?.draw_odds ?? '?'}/${odds?.away_odds ?? '?'}`);
   }
-  console.log(`Saved stats for ${teams.size} teams`);
+
+  // ── Save (onConflict = ignore, UNIQUE constraint enforces dedup) ──
+  if (rows.length) {
+    const { error } = await supabase
+      .from('matches')
+      .upsert(rows, { onConflict: 'external_id', ignoreDuplicates: true });
+    if (error) { console.error('Save error:', error.message); }
+    else        { console.log(`\nSaved ${rows.length} matches. Quota left: ${quotaLeft ?? '?'}`); }
+  }
 
   await supabase.from('agent_logs').insert({
-    agent: 'stats-agent',
-    status: 'success',
-    message: `Saved ${saved} matches. API requests used: 2`
+    agent: 'stats-agent', status: 'success',
+    message: `Saved ${rows.length} new matches. Quota: ${quotaLeft ?? '?'}`,
   });
-
-  console.log('\nStats Agent completed! Used only 2 API requests.');
 }
 
-runStatsAgent().catch(e => console.error('FATAL:', e.message));
+run().catch(e => { console.error('FATAL:', e.message); process.exit(1); });

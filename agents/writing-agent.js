@@ -1,214 +1,207 @@
+// ============================================================
+// writing-agent.js — aipickspro.com (v4 — FINAL)
+// Runs after stats-agent.
+//
+// GUARANTEES (no duplicates possible):
+//   - Loads match_ids that already have articles → skips them
+//   - DB UNIQUE constraint on match_id means even if code bugs out,
+//     the DB will reject a second article for the same match
+//   - Skips matches without home_odds + away_odds
+//
+// ANALYST: Marco Bellini — 35yr veteran, picks on VALUE not favourites
+// ============================================================
+
 require('dotenv').config();
+const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const supabase  = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-function generateSlug(home, away, league) {
-  const date = new Date().toISOString().split('T')[0];
-  const clean = s => s.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  return `${clean(home)}-vs-${clean(away)}-${clean(league)}-prediction-${date}`;
+const SYSTEM_PROMPT = `You are Marco Bellini, a 35-year veteran football analyst and odds compiler.
+You spent two decades setting opening lines at one of Europe's top bookmakers before moving to independent analysis.
+You have personally priced over 40,000 matches across all major European competitions.
+
+YOUR PROCESS:
+1. Compute implied probability for every outcome: 1/decimal_odds (strip ~5% overround)
+2. Estimate TRUE probability using: form (W/D/L last 5), goals/game, league position, H2H record
+3. Calculate edge = your_prob - implied_prob
+4. Pick the outcome with highest positive edge across 1X2, Over/Under, BTTS
+5. If no market shows ≥+3% edge, pick the most likely outcome and flag confidence ≤2
+
+RULES:
+- NEVER pick home team by default. Distribution: ~45% home / 27% draw / 28% away
+- Two high-scoring teams (both >1.5 goals/game): consider Over 2.5 or BTTS Yes
+- Two stingy defences (both <1.0 conceded/game): consider Under 2.5 or BTTS No
+- Strong form gap (winner of last 4+, loser of last 3+): weight this heavily
+- Be honest: thin data = confidence 1-2, strong data + clear edge = confidence 4-5
+
+WRITING: Direct, intelligent, no filler. Cite specific numbers. The article MUST match the pick.
+
+OUTPUT: ONLY valid JSON — no markdown fences, no text before or after.
+{
+  "market":           "1X2" | "Totals" | "BTTS",
+  "pick_code":        "1" | "X" | "2" | "Over 2.5" | "Under 2.5" | "BTTS Yes" | "BTTS No",
+  "pick_odds":        <decimal number>,
+  "model_prob":       <integer 1-99>,
+  "implied_prob":     <integer 1-99>,
+  "edge":             <number, model_prob - implied_prob>,
+  "confidence":       <integer 1-5>,
+  "reasoning":        "<max 20 words: the core statistical thesis>",
+  "title":            "<55-65 chars: team names + pick angle, no generic phrases>",
+  "meta_description": "<150-160 chars: includes the pick and odds>",
+  "excerpt":          "<2 sentences ~40 words>",
+  "article":          "<380-420 words HTML: <p> <h2> <ul><li>. Sections: (1) match context; (2) <h2>Form and Statistics</h2>; (3) <h2>The Value Pick</h2> with exact odds; (4) clear recommendation. No filler.>"
+}`;
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function slugify(s) {
+  return s.toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')
+    .replace(/^-|-$/g, '').slice(0, 80);
 }
 
-function determinePrediction(match, homeStats, awayStats) {
-  const homeOdds = match.home_odds ? parseFloat(match.home_odds) : null;
-  const awayOdds = match.away_odds ? parseFloat(match.away_odds) : null;
-  const drawOdds = match.draw_odds ? parseFloat(match.draw_odds) : null;
-
-  // Score based on stats
-  let homeScore = 5; // home advantage
-  let awayScore = 0;
-
-  if (homeStats?.form) {
-    homeStats.form.split('-').forEach(r => {
-      if (r === 'W') homeScore += 3;
-      else if (r === 'D') homeScore += 1;
-    });
-  }
-  if (awayStats?.form) {
-    awayStats.form.split('-').forEach(r => {
-      if (r === 'W') awayScore += 3;
-      else if (r === 'D') awayScore += 1;
-    });
-  }
-  if (homeStats?.goals_scored) homeScore += parseFloat(homeStats.goals_scored) * 2;
-  if (homeStats?.goals_conceded) homeScore -= parseFloat(homeStats.goals_conceded);
-  if (awayStats?.goals_scored) awayScore += parseFloat(awayStats.goals_scored) * 2;
-  if (awayStats?.goals_conceded) awayScore -= parseFloat(awayStats.goals_conceded);
-
-  let pick, odds, confidence;
-
-  // Use odds if available for pick
-  if (homeOdds && awayOdds) {
-    if (homeScore > awayScore + 3) {
-      pick = `${match.home_team} Win`;
-      odds = homeOdds.toFixed(2);
-      confidence = homeOdds < 1.5 ? 5 : homeOdds < 1.8 ? 4 : 3;
-    } else if (awayScore > homeScore + 2) {
-      pick = `${match.away_team} Win`;
-      odds = awayOdds.toFixed(2);
-      confidence = awayOdds < 1.8 ? 4 : 3;
-    } else if (drawOdds && Math.abs(homeScore - awayScore) < 2) {
-      pick = 'Draw';
-      odds = drawOdds.toFixed(2);
-      confidence = 3;
-    } else if (homeOdds <= awayOdds) {
-      pick = `${match.home_team} Win`;
-      odds = homeOdds.toFixed(2);
-      confidence = homeOdds < 1.6 ? 4 : 3;
-    } else {
-      pick = `${match.away_team} Win`;
-      odds = awayOdds.toFixed(2);
-      confidence = awayOdds < 1.6 ? 4 : 3;
-    }
-  } else {
-    // No odds - use stats only
-    if (homeScore > awayScore + 3) {
-      pick = `${match.home_team} Win`;
-      confidence = 4;
-    } else if (awayScore > homeScore + 2) {
-      pick = `${match.away_team} Win`;
-      confidence = 3;
-    } else {
-      pick = `${match.home_team} Win`;
-      confidence = 2;
-    }
-    odds = null;
-  }
-
-  return { pick, odds, confidence };
+function buildBrief(m) {
+  return [
+    `MATCH:   ${m.home_team} (home) vs ${m.away_team} (away)`,
+    `LEAGUE:  ${m.league}`,
+    `KICKOFF: ${m.match_date}`,
+    `BOOKMAKERS: ${m.bookmaker_count || 'n/a'}`,
+    '',
+    '── MARKETS (median decimal odds) ──',
+    `1X2:    Home ${m.home_odds ?? 'n/a'} | Draw ${m.draw_odds ?? 'n/a'} | Away ${m.away_odds ?? 'n/a'}`,
+    m.totals_point && m.over_odds ? `Totals ${m.totals_point}: Over ${m.over_odds} | Under ${m.under_odds}` : '',
+    m.btts_yes_odds ? `BTTS:   Yes ${m.btts_yes_odds} | No ${m.btts_no_odds}` : '',
+    '',
+    '── TEAM STATS (last 5 matches) ──',
+    `${m.home_team}:`,
+    `  Form: ${m.home_form || 'n/a'}  |  Goals/game: ${m.home_goals_for ?? 'n/a'} scored, ${m.home_goals_against ?? 'n/a'} conceded  |  Position: ${m.home_position ?? 'n/a'}`,
+    `${m.away_team}:`,
+    `  Form: ${m.away_form || 'n/a'}  |  Goals/game: ${m.away_goals_for ?? 'n/a'} scored, ${m.away_goals_against ?? 'n/a'} conceded  |  Position: ${m.away_position ?? 'n/a'}`,
+    ...(Array.isArray(m.h2h) && m.h2h.length ? [
+      '',
+      '── HEAD-TO-HEAD (last 5) ──',
+      ...m.h2h.map(g => `  ${g.date}: ${g.home} ${g.score} ${g.away}`)
+    ] : []),
+  ].filter(l => l !== null).join('\n');
 }
 
-function buildContent(match, homeStats, awayStats, prediction) {
-  const matchDate = new Date(match.match_date).toLocaleDateString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
-  });
-
-  const lines = [
-    `${match.home_team} vs ${match.away_team} — ${match.league}`,
-    `Kick-off: ${matchDate} UTC`,
-    ``,
-  ];
-
-  if (match.home_odds && match.away_odds) {
-    lines.push(`Odds: ${match.home_team} @ ${match.home_odds} | Draw @ ${match.draw_odds || 'N/A'} | ${match.away_team} @ ${match.away_odds}`);
-    lines.push('');
-  }
-
-  if (homeStats?.form && homeStats.form !== 'Unknown' && awayStats?.form && awayStats.form !== 'Unknown') {
-    lines.push(`Form: ${match.home_team} ${homeStats.form} | ${match.away_team} ${awayStats.form}`);
-  }
-
-  if (homeStats?.goals_scored && awayStats?.goals_scored) {
-    lines.push(`Goals/game: ${match.home_team} ${homeStats.goals_scored} scored, ${homeStats.goals_conceded || '?'} conceded | ${match.away_team} ${awayStats.goals_scored} scored, ${awayStats.goals_conceded || '?'} conceded`);
-  }
-
-  if (homeStats?.injuries && !['None reported', 'Check latest news', 'Check news', 'None'].includes(homeStats.injuries)) {
-    lines.push(`${match.home_team} injuries: ${homeStats.injuries}`);
-  }
-
-  if (awayStats?.injuries && !['None reported', 'Check latest news', 'Check news', 'None'].includes(awayStats.injuries)) {
-    lines.push(`${match.away_team} injuries: ${awayStats.injuries}`);
-  }
-
-  lines.push('');
-  if (prediction.odds) {
-    lines.push(`VERDICT: ${prediction.pick} @ ${prediction.odds} — Confidence: ${prediction.confidence}/5`);
-  } else {
-    lines.push(`VERDICT: ${prediction.pick} — Confidence: ${prediction.confidence}/5`);
-  }
-
-  return lines.join('\n');
+function parseJSON(raw) {
+  let s = raw.trim();
+  if (s.startsWith('```')) s = s.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  const first = s.indexOf('{'), last = s.lastIndexOf('}');
+  if (first > 0 || last < s.length - 1) s = s.slice(first, last + 1);
+  return JSON.parse(s);
 }
 
-async function runWritingAgent() {
-  console.log('Writing Agent starting...');
-  console.log('Time:', new Date().toISOString());
+function validatePick(pick, match) {
+  const oddsMap = {
+    '1': match.home_odds, 'X': match.draw_odds, '2': match.away_odds,
+    'Over 2.5': match.over_odds, 'Under 2.5': match.under_odds,
+    'BTTS Yes': match.btts_yes_odds, 'BTTS No': match.btts_no_odds,
+  };
+  const dbOdds = oddsMap[pick.pick_code];
+  if (!dbOdds) return { ok: false, reason: `pick_code "${pick.pick_code}" has no odds` };
+  pick.pick_odds    = dbOdds;
+  pick.implied_prob = Math.round((1 / dbOdds) * 100);
+  pick.edge         = Math.round((pick.model_prob || 0) - pick.implied_prob);
+  return { ok: true };
+}
 
-  // Get ALL upcoming matches (with or without odds)
+async function run() {
+  console.log('Writing Agent v4 starting —', new Date().toISOString());
+
+  // Load match_ids that already have an article (one check, no DB constraint bypass possible)
+  const { data: existingArts } = await supabase.from('articles').select('match_id');
+  const writtenIds = new Set((existingArts || []).map(a => a.match_id));
+  console.log(`Already written: ${writtenIds.size} articles`);
+
+  // Load upcoming matches with odds
   const { data: matches, error } = await supabase
     .from('matches')
     .select('*')
     .eq('status', 'upcoming')
+    .gte('match_date', new Date().toISOString())
+    .not('home_odds', 'is', null)
+    .not('away_odds', 'is', null)
     .order('match_date', { ascending: true });
 
-  if (error) { console.error('DB error:', error.message); return; }
-  if (!matches?.length) { console.log('No matches found'); return; }
+  if (error) { console.error('Fetch error:', error.message); return; }
 
-  console.log(`Found ${matches.length} matches`);
+  const todo = matches.filter(m => !writtenIds.has(m.id));
+  console.log(`Matches with odds: ${matches.length} | New to write: ${todo.length}`);
 
-  const today = new Date().toISOString().split('T')[0];
-  const todayStart = `${today}T00:00:00.000Z`;
-
-  const { data: existing } = await supabase
-    .from('articles')
-    .select('slug')
-    .gte('published_at', todayStart);
-
-  const existingSlugs = new Set((existing || []).map(a => a.slug));
-
-  const toWrite = matches.filter(m => {
-    const slug = generateSlug(m.home_team, m.away_team, m.league);
-    return !existingSlugs.has(slug);
-  });
-
-  if (toWrite.length === 0) {
-    console.log('All matches already have predictions for today');
+  if (!todo.length) {
+    console.log('All matches already have predictions.');
+    await supabase.from('agent_logs').insert({ agent: 'writing-agent', status: 'success', message: 'Nothing to write' });
     return;
   }
 
-  console.log(`Generating ${toWrite.length} new predictions...\n`);
-  let saved = 0;
+  let ok = 0, failed = 0;
+  const dist = {};
 
-  for (const match of toWrite) {
-    const { data: homeStats } = await supabase
-      .from('team_stats').select('*').eq('team_name', match.home_team).single();
-    const { data: awayStats } = await supabase
-      .from('team_stats').select('*').eq('team_name', match.away_team).single();
+  for (const match of todo) {
+    try {
+      const resp = await anthropic.messages.create({
+        model: 'claude-sonnet-4-5', max_tokens: 2048,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: `Analyse and return JSON:\n\n${buildBrief(match)}` }],
+      });
 
-    const prediction = determinePrediction(match, homeStats, awayStats);
-    const slug = generateSlug(match.home_team, match.away_team, match.league);
-    const title = `${match.home_team} vs ${match.away_team} Prediction — ${match.league}`;
-    const content = buildContent(match, homeStats, awayStats, prediction);
+      const raw = resp.content.find(c => c.type === 'text')?.text || '';
+      let pick;
+      try { pick = parseJSON(raw); }
+      catch { console.error(`  ✗ ${match.home_team} vs ${match.away_team} — JSON parse failed`); failed++; continue; }
 
-    const predStr = prediction.odds
-      ? `${prediction.pick} @ ${prediction.odds}`
-      : prediction.pick;
+      const v = validatePick(pick, match);
+      if (!v.ok) { console.error(`  ✗ ${match.home_team} vs ${match.away_team} — ${v.reason}`); failed++; continue; }
 
-    const { error: err } = await supabase.from('articles').upsert({
-      match_id: match.id,
-      title,
-      slug,
-      sport: match.sport,
-      league: match.league,
-      content,
-      excerpt: predStr,
-      meta_description: `${match.home_team} vs ${match.away_team} prediction — ${match.league}. Tip: ${predStr}.`,
-      prediction: predStr,
-      odds: prediction.odds || null,
-      confidence: prediction.confidence,
-      bookmaker: 'Bet365',
-      status: 'published',
-      result: 'pending',
-      github_published: false,
-      published_at: new Date().toISOString()
-    }, { onConflict: 'slug' });
+      const dateStr = match.match_date.split('T')[0];
+      const slug    = slugify(`${match.home_team}-vs-${match.away_team}-${dateStr}`);
 
-    if (!err) {
-      console.log(`✓ ${match.home_team} vs ${match.away_team} — ${predStr}`);
-      saved++;
-    } else {
-      console.error(`✗ ${err.message}`);
+      const { error: saveErr } = await supabase.from('articles').upsert({
+        match_id: match.id, title: pick.title, slug,
+        sport: match.sport, league: match.league,
+        content: pick.article, excerpt: pick.excerpt, meta_description: pick.meta_description,
+        market: pick.market, pick_code: pick.pick_code,
+        pick_odds: pick.pick_odds, odds: String(pick.pick_odds),
+        model_prob: pick.model_prob, implied_prob: pick.implied_prob,
+        edge: pick.edge, confidence: pick.confidence, reasoning: pick.reasoning,
+        prediction: `${pick.pick_code} @ ${pick.pick_odds}`,
+        bookmaker: 'Market median', status: 'ready',
+        github_published: false, published_at: new Date().toISOString(),
+      }, { onConflict: 'match_id', ignoreDuplicates: true }); // DB constraint is final arbiter
+
+      if (saveErr) {
+        console.error(`  ✗ ${match.home_team} vs ${match.away_team} — ${saveErr.message}`);
+        failed++;
+      } else {
+        const edgeStr = pick.edge >= 0 ? `+${pick.edge}%` : `${pick.edge}%`;
+        console.log(`  ✓ ${match.home_team} vs ${match.away_team} → ${pick.pick_code} @ ${pick.pick_odds} (${edgeStr}, ${pick.confidence}/5)`);
+        dist[pick.pick_code] = (dist[pick.pick_code] || 0) + 1;
+        ok++;
+      }
+    } catch (e) {
+      console.error(`  ✗ ${match.home_team} vs ${match.away_team} — ${e.message}`);
+      failed++;
+    }
+    await sleep(2000);
+  }
+
+  if (ok > 0) {
+    console.log('\nPick distribution:');
+    for (const [code, n] of Object.entries(dist).sort((a, b) => b[1] - a[1])) {
+      console.log(`  ${code.padEnd(12)} ${n}  (${Math.round(n / ok * 100)}%)`);
     }
   }
 
   await supabase.from('agent_logs').insert({
     agent: 'writing-agent',
-    status: 'success',
-    message: `Generated ${saved} predictions`
+    status: failed === 0 ? 'success' : 'partial',
+    message: `Written ${ok}, failed ${failed}. Dist: ${JSON.stringify(dist)}`,
   });
-
-  console.log(`\nCompleted! Generated ${saved} predictions.`);
+  console.log(`\nWriting Agent done. ${ok} written, ${failed} failed.`);
 }
 
-runWritingAgent().catch(e => console.error('FATAL:', e.message));
+run().catch(e => { console.error('FATAL:', e.message); process.exit(1); });
