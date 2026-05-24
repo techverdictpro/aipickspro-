@@ -275,7 +275,7 @@ export default function FootballPage() {
                           </div>
                           <div className="card-title">{a.title}</div>
                           <div className="card-time">⏰ {formatKickoff(a.match_date)}</div>
-                          {a.reasoning && <div style={{fontSize:'11px',color:'#8a8f99',marginBottom:'8px',fontStyle:'italic'}}>"{a.reasoning}"</div>}
+                          {a.reasoning && <div style={{fontSize:'11px',color:'#8a8f99',marginBottom:'8px',fontStyle:'italic'}}>"{a.reasoning.replace(/<[^>]+>/g, '').trim()}"</div>}
                           <div className="pick-box">
                             <div>
                               <div className="pick-label">Our Pick</div>
