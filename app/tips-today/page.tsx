@@ -30,33 +30,42 @@ function getArticles() {
 
         const { data, content } = matter(fs.readFileSync(full, 'utf-8'))
 
-        // Skip finished matches (validated by validation-agent)
-        const finished = data.pick_won === true || data.pick_won === false
-          || data.result === 'won' || data.result === 'lost'
-        if (finished) continue
+        // Skip validated matches (finished)
+        if (data.pick_won === true || data.pick_won === false) continue
+        if (data.result === 'won' || data.result === 'lost') continue
 
-        // ALWAYS compute isToday dynamically — NEVER trust is_today from MDX
-        // (that flag gets stale when the publisher wrote it on a different day)
+        // ALWAYS compute from match_date — NEVER trust is_today from MDX (stale)
         let isToday = false
-        if (data.match_date) isToday = sofiaDay(data.match_date as string) === today
-        else if (data.date)  isToday = data.date === today
+        if (data.match_date) {
+          isToday = sofiaDay(data.match_date as string) === today
+        } else if (data.date) {
+          isToday = data.date === today
+        }
         if (!isToday) continue
 
-        // Strip HTML tags from excerpt before displaying
-        const excerpt = (data.excerpt || '').toString()
-          .replace(/<[^>]+>/g, '').trim() ||
+        const excerpt = (data.excerpt || '')
+          .toString().replace(/<[^>]+>/g, '').trim() ||
           content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160)
 
         arts.push({
-          slug: entry.replace('.mdx', ''), title: data.title || '',
-          sport, league: data.league || '', date: data.date || '',
-          match_date: data.match_date || '', prediction: data.prediction || '',
-          pick_code: data.pick_code || '', market: data.market || '',
-          odds: data.odds || String(data.pick_odds || ''), pick_odds: data.pick_odds ?? null,
-          confidence: data.confidence || 3, model_prob: data.model_prob ?? null,
-          implied_prob: data.implied_prob ?? null, edge: data.edge ?? null,
-          reasoning: data.reasoning || '', result: data.result || 'pending',
-          lifecycle: data.lifecycle || 'today', preview: excerpt,
+          slug:         entry.replace('.mdx', ''),
+          title:        data.title || '',
+          sport,
+          league:       data.league || '',
+          date:         data.date || '',
+          match_date:   data.match_date || '',
+          prediction:   data.prediction || '',
+          pick_code:    data.pick_code || '',
+          market:       data.market || '',
+          odds:         data.odds || String(data.pick_odds || ''),
+          pick_odds:    data.pick_odds ?? null,
+          confidence:   data.confidence || 3,
+          model_prob:   data.model_prob ?? null,
+          implied_prob: data.implied_prob ?? null,
+          edge:         data.edge ?? null,
+          reasoning:    (data.reasoning || '').replace(/<[^>]+>/g, '').trim(),
+          result:       data.result || 'pending',
+          preview:      excerpt,
         })
       }
     }

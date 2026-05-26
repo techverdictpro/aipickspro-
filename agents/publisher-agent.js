@@ -160,9 +160,8 @@ async function run() {
   console.log(`Articles in DB: ${allArts.length}`);
 
   // Articles that need publishing (new or result updated)
-  const toPublish = allArts.filter(a =>
-    !a.github_published || (a.pick_won !== null && a.validated_at)
-  );
+  // Always re-publish ALL to keep lifecycle flags fresh
+  const toPublish = allArts; // was: allArts.filter(a =>
   console.log(`To publish/update: ${toPublish.length}`);
 
   if (!toPublish.length) {
