@@ -26,7 +26,6 @@ function getArticle(slug: string) {
       const { data, content } = matter(raw)
       return { ...data, content } as any
     }
-    if (!fs.existsSync(baseDir)) continue
     const entries = fs.readdirSync(baseDir)
     for (const entry of entries) {
       const entryPath = path.join(baseDir, entry)
@@ -87,10 +86,23 @@ export default async function PredictionPage({ params }: Props) {
   const confColor = (c: number) => c >= 5 ? '#2ecc8a' : c >= 4 ? '#e8f042' : '#f39c12'
   const sportEmoji: Record<string, string> = { football: '⚽', basketball: '🏀', tennis: '🎾', nfl: '🏈' }
 
-  const paragraphs = article.content
-    .split('\n')
-    .filter((line: string) => line.trim() && !line.startsWith('---') && !line.startsWith('#'))
-    .map((line: string) => line.trim())
+  // Render HTML content properly — strip only frontmatter remnants and horizontal rules
+  const htmlContent = (article.content || '')
+    .replace(/^---[\s\S]*?---\n*/m, '')   // strip any stray frontmatter
+    .replace(/^\s*---\s*$/gm, '')          // strip horizontal rules (---)
+    .replace(/^\s*\*Odds correct.*$/gm, '') // strip the disclaimer line (already shown below)
+    .trim()
+
+  // Pick display — pick_code is cleaner, fall back to prediction field
+  const pickDisplay = article.pick_code || article.prediction?.split('@')[0]?.trim() || article.prediction || ''
+  const oddsDisplay = article.pick_odds || article.odds || ''
+
+  // Result badge
+  const resultBadge = article.pick_won === true
+    ? { text: '✓ WON', color: '#2ecc8a', bg: 'rgba(46,204,138,0.1)' }
+    : article.pick_won === false
+    ? { text: '✗ LOST', color: '#e84545', bg: 'rgba(232,69,69,0.1)' }
+    : null
 
   return (
     <>
@@ -119,8 +131,17 @@ export default async function PredictionPage({ params }: Props) {
         .conf-dots { display: flex; gap: 4px; align-items: center; }
         .cdot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.1); }
         .bet-btn { background: #e8f042; color: #000; font-size: 14px; font-weight: 800; padding: 12px 24px; border-radius: 4px; display: inline-block; }
+
+        /* Article body — render HTML properly */
         .article-body { font-size: 16px; line-height: 1.8; color: #d0cdc6; margin-bottom: 40px; }
         .article-body p { margin-bottom: 16px; }
+        .article-body h2 { font-size: 20px; font-weight: 800; color: #f0ede6; margin: 28px 0 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .article-body h3 { font-size: 17px; font-weight: 700; color: #f0ede6; margin: 20px 0 10px; }
+        .article-body ul { padding-left: 20px; margin-bottom: 16px; }
+        .article-body ul li { margin-bottom: 6px; }
+        .article-body strong { color: #f0ede6; font-weight: 700; }
+        .article-body blockquote { border-left: 3px solid #e8f042; padding-left: 16px; color: #8a8f99; font-style: italic; margin: 20px 0; }
+
         .aff-section { margin: 40px 0; }
         .aff-section-title { font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 6px; }
         .aff-section-sub { font-size: 13px; color: #8a8f99; margin-bottom: 20px; }
@@ -154,20 +175,37 @@ export default async function PredictionPage({ params }: Props) {
         <div className="breadcrumb">
           <a href="/">Home</a> &rsaquo; <a href={`/${article.sport}/`}>{sportEmoji[article.sport]} {article.sport}</a> &rsaquo; <span style={{ color: '#e8f042' }}>Prediction</span>
         </div>
+
         <div className="article-meta">
           <span className="meta-badge meta-sport">{sportEmoji[article.sport]} {article.sport}</span>
           {article.league && <span className="meta-badge meta-league">{article.league}</span>}
-          <span className="meta-date">{new Date(article.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+          <span className="meta-date">
+            {new Date(article.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
+          {resultBadge && (
+            <span style={{ fontSize: '13px', fontWeight: 800, color: resultBadge.color, background: resultBadge.bg, padding: '4px 12px', borderRadius: '4px' }}>
+              {resultBadge.text}
+            </span>
+          )}
         </div>
+
         <h1 className="article-title">{article.title}</h1>
+
+        {/* Result score if finished */}
+        {article.actual_home_score != null && (
+          <div style={{ fontSize: '28px', fontWeight: 900, marginBottom: '20px', color: article.pick_won === true ? '#2ecc8a' : article.pick_won === false ? '#e84545' : '#f0ede6' }}>
+            {article.actual_home_score} – {article.actual_away_score}
+          </div>
+        )}
+
         <div className="pick-box">
           <div>
             <div className="pick-label">Our Prediction</div>
-            <div className="pick-val">{article.prediction}</div>
+            <div className="pick-val">{pickDisplay}</div>
           </div>
           <div>
             <div className="pick-label">Odds</div>
-            <div className="pick-odds">{article.odds}</div>
+            <div className="pick-odds">{oddsDisplay}</div>
           </div>
           <div>
             <div className="pick-label">Confidence</div>
@@ -180,13 +218,17 @@ export default async function PredictionPage({ params }: Props) {
               <span style={{ fontSize: '13px', fontWeight: 700 }}>{confText(article.confidence)}</span>
             </div>
           </div>
-          <a href={AFFILIATES[0].url} target="_blank" rel="noopener noreferrer" className="bet-btn">BET NOW &rarr;</a>
+          <a href={AFFILIATES[0].url} target="_blank" rel="noopener noreferrer sponsored" className="bet-btn">
+            BET NOW &rarr;
+          </a>
         </div>
-        <div className="article-body">
-          {paragraphs.map((p: string, i: number) => (
-            <p key={i}>{p}</p>
-          ))}
-        </div>
+
+        {/* Article body — renders HTML tags from writing-agent */}
+        <div
+          className="article-body"
+          dangerouslySetInnerHTML={{ __html: htmlContent }}
+        />
+
         <div className="aff-section">
           <div className="aff-section-title">&#127942; Best Bookmakers</div>
           <div className="aff-section-sub">Compare bonuses and claim your welcome offer</div>
@@ -198,15 +240,24 @@ export default async function PredictionPage({ params }: Props) {
                   <div className="aff-card-region">{bm.regions}</div>
                 </div>
                 <div className="aff-card-bonus">{bm.bonus}</div>
-                <a href={bm.url} target="_blank" rel="noopener noreferrer" className="aff-card-btn">CLAIM OFFER &rarr;</a>
+                <a href={bm.url} target="_blank" rel="noopener noreferrer sponsored" className="aff-card-btn">
+                  CLAIM OFFER &rarr;
+                </a>
               </div>
             ))}
           </div>
           <div className="aff-disclaimer">* 18+ only. New customers only. T&Cs apply. Gamble responsibly.</div>
         </div>
-        <div className="disclaimer">Odds correct at time of publication. AiPicksPro may receive commission from bookmakers listed on this page.</div>
+
+        <div className="disclaimer">
+          Odds correct at time of publication. AiPicksPro may receive commission from bookmakers listed on this page.
+        </div>
       </div>
-      <div className="rg-bar"><strong style={{ color: '#fff' }}>&#9888; Gamble Responsibly.</strong> 18+ only.</div>
+
+      <div className="rg-bar">
+        <strong style={{ color: '#fff' }}>&#9888; Gamble Responsibly.</strong> 18+ only. Betting involves risk of loss.
+        Visit <a href="https://www.begambleaware.org" target="_blank" rel="noopener" style={{ color: '#e8f042' }}>BeGambleAware.org</a>
+      </div>
     </>
   )
 }
