@@ -1,5 +1,4 @@
 name: Run AI Agents
-
 on:
   schedule:
     - cron: '0 6 * * *'
@@ -21,9 +20,10 @@ jobs:
       - name: Install agent dependencies
         run: cd agents && npm ci
 
-      - name: Run Cleanup Agent
-        run: cd agents && node cleanup-agent.js
+      - name: Run Validation Agent (yesterday results)
+        run: cd agents && node validation-agent.js
         env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_PAT }}
@@ -33,11 +33,9 @@ jobs:
       - name: Run Stats Agent
         run: cd agents && node stats-agent.js
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-          FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_PAT }}
           GITHUB_OWNER: techverdictpro
           GITHUB_REPO: aipickspro-
@@ -46,25 +44,15 @@ jobs:
         run: cd agents && node writing-agent.js
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
 
       - name: Run Publisher Agent
         run: cd agents && node publisher-agent.js
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_PAT }}
-          GITHUB_OWNER: techverdictpro
-          GITHUB_REPO: aipickspro-
-
-      - name: Run Results Agent
-        run: cd agents && node results-agent.js
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_PAT }}
           GITHUB_OWNER: techverdictpro
           GITHUB_REPO: aipickspro-
