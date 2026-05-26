@@ -30,17 +30,21 @@ function getArticles() {
 
         const { data, content } = matter(fs.readFileSync(full, 'utf-8'))
 
-        // Skip finished matches
-        const finished = data.is_finished === true || data.result === 'won' || data.result === 'lost'
+        // Skip finished matches (validated by validation-agent)
+        const finished = data.pick_won === true || data.pick_won === false
+          || data.result === 'won' || data.result === 'lost'
         if (finished) continue
 
-        // Is it today in Sofia time?
-        let isToday = data.is_today === true
-        if (!isToday && data.match_date) isToday = sofiaDay(data.match_date as string) === today
-        if (!isToday && data.date)       isToday = data.date === today
+        // ALWAYS compute isToday dynamically — NEVER trust is_today from MDX
+        // (that flag gets stale when the publisher wrote it on a different day)
+        let isToday = false
+        if (data.match_date) isToday = sofiaDay(data.match_date as string) === today
+        else if (data.date)  isToday = data.date === today
         if (!isToday) continue
 
-        const excerpt = (data.excerpt || '').toString() ||
+        // Strip HTML tags from excerpt before displaying
+        const excerpt = (data.excerpt || '').toString()
+          .replace(/<[^>]+>/g, '').trim() ||
           content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160)
 
         arts.push({
