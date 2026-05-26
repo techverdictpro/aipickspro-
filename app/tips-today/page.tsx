@@ -1,21 +1,12 @@
+// Static page — passes ALL articles to client component
+// Date filtering happens client-side (browser knows the real date)
 import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
-import TipsClient from './TipsClient'
+import TipsPageWrapper from './TipsPageWrapper'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
-function sofiaDay(d: Date | string): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Sofia',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(typeof d === 'string' ? new Date(d) : d)
-}
-
-function getArticles() {
+function getAllArticles() {
   const sports = ['football', 'basketball', 'tennis', 'nfl']
-  const today  = sofiaDay(new Date())
   const arts: any[] = []
 
   for (const sport of sports) {
@@ -29,19 +20,6 @@ function getArticles() {
         if (!entry.endsWith('.mdx')) continue
 
         const { data, content } = matter(fs.readFileSync(full, 'utf-8'))
-
-        // Skip validated matches (finished)
-        if (data.pick_won === true || data.pick_won === false) continue
-        if (data.result === 'won' || data.result === 'lost') continue
-
-        // ALWAYS compute from match_date — NEVER trust is_today from MDX (stale)
-        let isToday = false
-        if (data.match_date) {
-          isToday = sofiaDay(data.match_date as string) === today
-        } else if (data.date) {
-          isToday = data.date === today
-        }
-        if (!isToday) continue
 
         const excerpt = (data.excerpt || '')
           .toString().replace(/<[^>]+>/g, '').trim() ||
@@ -65,6 +43,7 @@ function getArticles() {
           edge:         data.edge ?? null,
           reasoning:    (data.reasoning || '').replace(/<[^>]+>/g, '').trim(),
           result:       data.result || 'pending',
+          pick_won:     data.pick_won ?? null,
           preview:      excerpt,
         })
       }
@@ -79,6 +58,6 @@ function getArticles() {
 }
 
 export default function TipsTodayPage() {
-  const articles = getArticles()
-  return <TipsClient articles={articles} />
+  const allArticles = getAllArticles()
+  return <TipsPageWrapper allArticles={allArticles} />
 }
