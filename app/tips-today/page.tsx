@@ -1,5 +1,5 @@
-// Static page — passes ALL articles to client component
-// Date filtering happens client-side (browser knows the real date)
+// Static export compatible — no force-dynamic
+// Date filtering happens CLIENT-SIDE in TipsPageWrapper (real browser date)
 import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'

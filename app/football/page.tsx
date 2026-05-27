@@ -2,8 +2,6 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
 
 interface Article {
   slug: string
