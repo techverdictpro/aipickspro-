@@ -28,20 +28,48 @@ function currentSeason() {
 }
 
 const LEAGUES = [
-  { sport: 'football', name: 'Premier League',     id: 39  },
-  { sport: 'football', name: 'La Liga',            id: 140 },
-  { sport: 'football', name: 'Serie A',            id: 135 },
-  { sport: 'football', name: 'Bundesliga',         id: 78  },
-  { sport: 'football', name: 'Ligue 1',            id: 61  },
-  { sport: 'football', name: 'Champions League',   id: 2   },
-  { sport: 'football', name: 'Europa League',      id: 3   },
-  { sport: 'football', name: 'Conference League',  id: 848 },
-  { sport: 'football', name: 'Eredivisie',         id: 88  },
-  { sport: 'football', name: 'Primeira Liga',      id: 94  },
-  { sport: 'football', name: 'Super Lig',          id: 203 },
-  { sport: 'football', name: 'Belgian Pro League', id: 144 },
-  { sport: 'football', name: 'Scottish Premiership', id: 179 },
-  { sport: 'football', name: 'MLS',                id: 253 },
+  // Top 5 European
+  { sport: 'football', name: 'Premier League',        id: 39  },
+  { sport: 'football', name: 'La Liga',               id: 140 },
+  { sport: 'football', name: 'Serie A',               id: 135 },
+  { sport: 'football', name: 'Bundesliga',            id: 78  },
+  { sport: 'football', name: 'Ligue 1',               id: 61  },
+  // Second divisions
+  { sport: 'football', name: 'Championship',          id: 40  },
+  { sport: 'football', name: 'La Liga 2',             id: 141 },
+  { sport: 'football', name: 'Serie B',               id: 136 },
+  { sport: 'football', name: 'Bundesliga 2',          id: 79  },
+  { sport: 'football', name: 'Ligue 2',               id: 62  },
+  // European cups
+  { sport: 'football', name: 'Champions League',      id: 2   },
+  { sport: 'football', name: 'Europa League',         id: 3   },
+  { sport: 'football', name: 'Conference League',     id: 848 },
+  // Other European
+  { sport: 'football', name: 'Eredivisie',            id: 88  },
+  { sport: 'football', name: 'Primeira Liga',         id: 94  },
+  { sport: 'football', name: 'Super Lig',             id: 203 },
+  { sport: 'football', name: 'Belgian Pro League',    id: 144 },
+  { sport: 'football', name: 'Scottish Premiership',  id: 179 },
+  { sport: 'football', name: 'Austrian Bundesliga',   id: 218 },
+  { sport: 'football', name: 'Swiss Super League',    id: 207 },
+  { sport: 'football', name: 'Greek Super League',    id: 197 },
+  { sport: 'football', name: 'Danish Superliga',      id: 119 },
+  { sport: 'football', name: 'Norwegian Eliteserien', id: 103 },
+  { sport: 'football', name: 'Swedish Allsvenskan',   id: 113 },
+  { sport: 'football', name: 'Polish Ekstraklasa',    id: 106 },
+  { sport: 'football', name: 'Czech Liga',            id: 345 },
+  { sport: 'football', name: 'Romanian Liga 1',       id: 283 },
+  // Americas
+  { sport: 'football', name: 'MLS',                   id: 253 },
+  { sport: 'football', name: 'Liga MX',               id: 262 },
+  { sport: 'football', name: 'Brasileirao',           id: 71  },
+  { sport: 'football', name: 'Argentine Primera',     id: 128 },
+  { sport: 'football', name: 'Copa Libertadores',     id: 13  },
+  { sport: 'football', name: 'Copa Sudamericana',     id: 11  },
+  // Asia / Middle East
+  { sport: 'football', name: 'Saudi Pro League',      id: 307 },
+  { sport: 'football', name: 'J-League',              id: 98  },
+  { sport: 'football', name: 'K-League',              id: 292 },
 ];
 
 const FIXTURES_PER_LEAGUE = 5;
