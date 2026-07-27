@@ -104,6 +104,7 @@ export default function NFLPage() {
           <a href="/tennis/">Tennis</a>
           <a href="/nfl/" className="nav-active">NFL</a>
           <a href="/tips-today/">Today&apos;s Tips</a>
+          <a href="/results/">Results</a>
         </div>
         <a href="/tips-today/" className="nav-cta">FREE PICKS</a>
       </nav>
