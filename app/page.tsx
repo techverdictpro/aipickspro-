@@ -241,7 +241,7 @@ export default function HomePage() {
 
         <div className="section-header">
           <h2 className="section-title">Latest <em>Predictions</em></h2>
-          <a href="/tips-today/" className="section-link">View all tips &rarr;</a>
+          <a href="/football/" className="section-link">View all predictions &rarr;</a>
         </div>
 
         <div className="picks-grid">
