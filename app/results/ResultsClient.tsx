@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { leagueFlag } from '../leagueFlags'
 
 interface Result {
   slug: string
@@ -177,7 +178,7 @@ export default function ResultsClient({ allResults }: { allResults: Result[] }) 
                     <div className="r-main">
                       <div className="r-title">{r.title}</div>
                       <div className="r-meta">
-                        <span>{SPORT_EMOJI[r.sport]}</span>
+                        <span>{leagueFlag(r.league)}</span>
                         <span className="r-league">{r.league}</span>
                         <span>·</span>
                         <span className="r-pick">{r.pick_code} @ {r.odds}</span>
