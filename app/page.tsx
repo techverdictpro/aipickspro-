@@ -53,13 +53,22 @@ function getAllArticles(): Article[] {
 }
 
 function getPreview(content: string): string {
-  const lines = content.split('\n').filter(l => l.trim() && !l.startsWith('---') && !l.startsWith('#') && !l.startsWith('*'))
-  return lines[0]?.substring(0, 160) + '...' || ''
+  // Маха HTML тагове (<p>, <h2>, <ul>...) и markdown, оставя чист текст
+  const clean = content
+    .replace(/<[^>]+>/g, ' ')            // маха всички HTML тагове
+    .replace(/^---[\s\S]*?---/m, '')     // маха frontmatter остатъци
+    .replace(/[#*_>`]/g, '')             // маха markdown символи
+    .replace(/\s+/g, ' ')                // сбива интервалите
+    .trim()
+  return clean.slice(0, 160) + (clean.length > 160 ? '…' : '')
 }
 
 export default function HomePage() {
   const allArticles = getAllArticles()
-  const featured = allArticles.slice(0, 9)
+  // На началната показваме само ПРЕДСТОЯЩИ прогнози (не завършили).
+  // Завършилите отиват в секцията /results.
+  const upcoming = allArticles.filter((a: any) => a.pick_won !== true && a.pick_won !== false)
+  const featured = upcoming.slice(0, 12)
 
   const sportCounts = {
     football: allArticles.filter(a => a.sport === 'football').length,
@@ -158,6 +167,7 @@ export default function HomePage() {
           <a href="/tennis/">Tennis</a>
           <a href="/nfl/">NFL</a>
           <a href="/tips-today/">Today&apos;s Tips</a>
+          <a href="/results/">Results</a>
         </div>
         <a href="/tips-today/" className="nav-cta">FREE PICKS</a>
       </nav>
