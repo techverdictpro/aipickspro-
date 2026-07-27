@@ -112,6 +112,7 @@ export default function TipsClient({ articles }: { articles: Article[] }) {
           <a href="/tennis/">Tennis</a>
           <a href="/nfl/">NFL</a>
           <a href="/tips-today/" className="nav-active">Today&apos;s Tips</a>
+          <a href="/results/">Results</a>
         </div>
         <a href="/tips-today/" className="nav-cta">FREE PICKS</a>
       </nav>
