@@ -28,20 +28,47 @@ interface Article {
 }
 
 const LEAGUE_META: Record<string, { label: string; flag: string; priority: number }> = {
+  // Евротурнири (най-отгоре)
   'champions-league':     { label: 'Champions League',     flag: '🏆', priority: 1 },
-  'europa-league':        { label: 'Europa League',        flag: '🟠', priority: 2 },
-  'conference-league':    { label: 'Conference League',    flag: '🟢', priority: 3 },
+  'europa-league':        { label: 'Europa League',        flag: '🏅', priority: 2 },
+  'conference-league':    { label: 'Conference League',    flag: '🎖️', priority: 3 },
+  // Топ 5 европейски
   'premier-league':       { label: 'Premier League',       flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', priority: 4 },
   'la-liga':              { label: 'La Liga',              flag: '🇪🇸', priority: 5 },
   'bundesliga':           { label: 'Bundesliga',           flag: '🇩🇪', priority: 6 },
   'serie-a':              { label: 'Serie A',              flag: '🇮🇹', priority: 7 },
   'ligue-1':              { label: 'Ligue 1',              flag: '🇫🇷', priority: 8 },
+  // Останала Европа
   'primeira-liga':        { label: 'Primeira Liga',        flag: '🇵🇹', priority: 9 },
   'eredivisie':           { label: 'Eredivisie',           flag: '🇳🇱', priority: 10 },
   'scottish-premiership': { label: 'Scottish Premiership', flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', priority: 11 },
-  'belgian-pro-league':   { label: 'Belgian Pro League',  flag: '🇧🇪', priority: 12 },
+  'belgian-pro-league':   { label: 'Belgian Pro League',   flag: '🇧🇪', priority: 12 },
   'super-lig':            { label: 'Süper Lig',            flag: '🇹🇷', priority: 13 },
-  'mls':                  { label: 'MLS',                  flag: '🇺🇸', priority: 14 },
+  'championship':         { label: 'Championship',         flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', priority: 14 },
+  'la-liga-2':            { label: 'La Liga 2',            flag: '🇪🇸', priority: 15 },
+  'bundesliga-2':         { label: 'Bundesliga 2',         flag: '🇩🇪', priority: 16 },
+  'serie-b':              { label: 'Serie B',              flag: '🇮🇹', priority: 17 },
+  'ligue-2':              { label: 'Ligue 2',              flag: '🇫🇷', priority: 18 },
+  'greek-super-league':   { label: 'Greek Super League',   flag: '🇬🇷', priority: 19 },
+  'swiss-super-league':   { label: 'Swiss Super League',   flag: '🇨🇭', priority: 20 },
+  'austrian-bundesliga':  { label: 'Austrian Bundesliga',  flag: '🇦🇹', priority: 21 },
+  'danish-superliga':     { label: 'Danish Superliga',     flag: '🇩🇰', priority: 22 },
+  'norwegian-eliteserien':{ label: 'Norwegian Eliteserien',flag: '🇳🇴', priority: 23 },
+  'swedish-allsvenskan':  { label: 'Swedish Allsvenskan',  flag: '🇸🇪', priority: 24 },
+  'polish-ekstraklasa':   { label: 'Polish Ekstraklasa',   flag: '🇵🇱', priority: 25 },
+  'czech-liga':           { label: 'Czech Liga',           flag: '🇨🇿', priority: 26 },
+  'romanian-liga-1':      { label: 'Romanian Liga 1',      flag: '🇷🇴', priority: 27 },
+  // Америка
+  'mls':                  { label: 'MLS',                  flag: '🇺🇸', priority: 28 },
+  'liga-mx':              { label: 'Liga MX',              flag: '🇲🇽', priority: 29 },
+  'brasileirao':          { label: 'Brasileirão',          flag: '🇧🇷', priority: 30 },
+  'argentine-primera':    { label: 'Argentine Primera',    flag: '🇦🇷', priority: 31 },
+  'copa-libertadores':    { label: 'Copa Libertadores',    flag: '🏆', priority: 32 },
+  'copa-sudamericana':    { label: 'Copa Sudamericana',    flag: '🏆', priority: 33 },
+  // Азия
+  'j-league':             { label: 'J-League',             flag: '🇯🇵', priority: 34 },
+  'k-league':             { label: 'K-League',             flag: '🇰🇷', priority: 35 },
+  'saudi-pro-league':     { label: 'Saudi Pro League',     flag: '🇸🇦', priority: 36 },
 }
 
 function sofiaDay(iso: string): string {
