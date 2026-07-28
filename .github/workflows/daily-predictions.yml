@@ -1,0 +1,84 @@
+# ============================================================
+# .github/workflows/daily-predictions.yml
+# Дневен pipeline: събира мачове → пише прогнози → публикува
+# Работи в облака на GitHub, независимо от твоя компютър.
+# ============================================================
+name: Daily Predictions
+
+on:
+  schedule:
+    # 09:00 UTC = 12:00 българско лятно време (EEST)
+    - cron: '0 9 * * *'
+  # Позволява ръчно пускане от GitHub бутон (за тест)
+  workflow_dispatch:
+
+# Нужно, за да може publisher-agent да пише в репото
+permissions:
+  contents: write
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: ./agents
+        run: npm install
+
+      - name: Step 1 — Push WON/LOST badges (from earlier validation)
+        working-directory: ./agents
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GITHUB_TOKEN:         ${{ secrets.GH_PAT }}
+          GITHUB_OWNER:         ${{ secrets.GH_OWNER }}
+          GITHUB_REPO:          ${{ secrets.GH_REPO }}
+          API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
+        run: node publisher-agent.js
+
+      - name: Step 2 — Fetch new fixtures + odds
+        working-directory: ./agents
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GITHUB_TOKEN:         ${{ secrets.GH_PAT }}
+          GITHUB_OWNER:         ${{ secrets.GH_OWNER }}
+          GITHUB_REPO:          ${{ secrets.GH_REPO }}
+          API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
+        run: node stats-agent.js
+
+      - name: Step 3 — Write predictions
+        working-directory: ./agents
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GITHUB_TOKEN:         ${{ secrets.GH_PAT }}
+          GITHUB_OWNER:         ${{ secrets.GH_OWNER }}
+          GITHUB_REPO:          ${{ secrets.GH_REPO }}
+          API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
+        run: node writing-agent.js
+
+      - name: Step 4 — Publish new predictions to site
+        working-directory: ./agents
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GITHUB_TOKEN:         ${{ secrets.GH_PAT }}
+          GITHUB_OWNER:         ${{ secrets.GH_OWNER }}
+          GITHUB_REPO:          ${{ secrets.GH_REPO }}
+          API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
+        run: node publisher-agent.js
