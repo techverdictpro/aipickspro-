@@ -1,0 +1,57 @@
+# ============================================================
+# .github/workflows/validate-results.yml
+# Сутрешна проверка: маркира завършилите мачове WON/LOST
+# и качва значките на сайта.
+# ============================================================
+name: Validate Results
+
+on:
+  schedule:
+    # 07:00 UTC = 10:00 българско лятно време
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: ./agents
+        run: npm install
+
+      - name: Validate finished matches
+        working-directory: ./agents
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GITHUB_TOKEN:         ${{ secrets.GH_PAT }}
+          GITHUB_OWNER:         ${{ secrets.GH_OWNER }}
+          GITHUB_REPO:          ${{ secrets.GH_REPO }}
+          API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
+        run: node validation-agent.js
+
+      - name: Push WON/LOST badges to site
+        working-directory: ./agents
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GITHUB_TOKEN:         ${{ secrets.GH_PAT }}
+          GITHUB_OWNER:         ${{ secrets.GH_OWNER }}
+          GITHUB_REPO:          ${{ secrets.GH_REPO }}
+          API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
+        run: node publisher-agent.js
