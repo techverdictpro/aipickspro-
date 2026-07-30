@@ -26,7 +26,7 @@ const SPORT_EMOJI: Record<string, string> = {
 
 const KEEP_DAYS = 7
 
-export default function ResultsClient({ allResults }: { allResults: Result[] }) {
+export default function ResultsClient({ allResults, lifetimeStats }: { allResults: Result[], lifetimeStats?: any }) {
   const [results, setResults] = useState<Result[]>([])
   const [ready, setReady] = useState(false)
 
@@ -52,6 +52,13 @@ export default function ResultsClient({ allResults }: { allResults: Result[] }) 
   const lost = results.filter(r => r.pick_won === false).length
   const total = won + lost
   const hitRate = total ? Math.round((won / total) * 100) : 0
+
+  // Таблото показва ВЕЧНАТА статистика (ако я има от stats.json),
+  // иначе пада на 7-дневната. Списъкът с мачове остава само 7 дни.
+  const showWon  = lifetimeStats ? lifetimeStats.wins    : won
+  const showLost = lifetimeStats ? lifetimeStats.losses  : lost
+  const showRate = lifetimeStats ? lifetimeStats.hitRate : hitRate
+  const showRoi  = lifetimeStats ? lifetimeStats.roi     : null
 
   // Групиране по ден
   const byDay: Record<string, Result[]> = {}
@@ -90,6 +97,7 @@ export default function ResultsClient({ allResults }: { allResults: Result[] }) 
         .sb-won strong { color: #2ecc8a; }
         .sb-lost strong { color: #e84545; }
         .sb-rate strong { color: #e8f042; }
+        .sb-roi strong { color: #3aa8ff; }
         .main { max-width: 1100px; margin: 0 auto; padding: 28px 32px 80px; }
         .day-group { margin-bottom: 32px; }
         .day-header { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #f0ede6; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); }
@@ -144,12 +152,17 @@ export default function ResultsClient({ allResults }: { allResults: Result[] }) 
           <div>
             <div className="page-label">&#128202; Track Record</div>
             <h1 className="page-title">Results &amp; <em>Verdicts</em></h1>
-            <p className="page-sub">Every settled prediction from the last {KEEP_DAYS} days with the final score — win or lose, fully transparent.</p>
+            <p className="page-sub">{lifetimeStats
+              ? `All-time record across ${showWon + showLost} settled picks. Match list below shows the last ${KEEP_DAYS} days.`
+              : `Every settled prediction from the last ${KEEP_DAYS} days with the final score — win or lose, fully transparent.`}</p>
           </div>
           <div className="scoreboard">
-            <div className="sb-item sb-won"><strong>{won}</strong><span>Won</span></div>
-            <div className="sb-item sb-lost"><strong>{lost}</strong><span>Lost</span></div>
-            <div className="sb-item sb-rate"><strong>{hitRate}%</strong><span>Hit Rate</span></div>
+            <div className="sb-item sb-won"><strong>{showWon}</strong><span>Won</span></div>
+            <div className="sb-item sb-lost"><strong>{showLost}</strong><span>Lost</span></div>
+            <div className="sb-item sb-rate"><strong>{showRate}%</strong><span>Hit Rate</span></div>
+            {showRoi !== null && (
+              <div className="sb-item sb-roi"><strong>{showRoi > 0 ? '+' : ''}{showRoi}%</strong><span>ROI</span></div>
+            )}
           </div>
         </div>
       </div>
