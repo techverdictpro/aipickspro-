@@ -56,5 +56,15 @@ function getFinishedArticles() {
 
 export default function ResultsPage() {
   const finished = getFinishedArticles()
-  return <ResultsClient allResults={finished} />
+
+  // Чете вечната статистика от stats.json (генериран от агента)
+  let lifetimeStats = null
+  try {
+    const statsPath = path.join(process.cwd(), 'content', 'stats.json')
+    if (fs.existsSync(statsPath)) {
+      lifetimeStats = JSON.parse(fs.readFileSync(statsPath, 'utf-8'))
+    }
+  } catch {}
+
+  return <ResultsClient allResults={finished} lifetimeStats={lifetimeStats} />
 }
