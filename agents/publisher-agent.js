@@ -215,6 +215,50 @@ async function run() {
     message: `created=${created} updated=${updated} deleted=${deleted} failed=${failed}`,
   });
 
+  // ── Генерираме stats.json от ВЕЧНАТА история (за track record) ──
+  try {
+    const { data: hist } = await supabase
+      .from('prediction_history')
+      .select('pick_won, pick_odds, pick_code, league, match_date');
+
+    if (hist && hist.length) {
+      const wins   = hist.filter(h => h.pick_won === true).length;
+      const losses = hist.filter(h => h.pick_won === false).length;
+      const total  = wins + losses;
+      const hitRate = total ? Math.round((wins / total) * 1000) / 10 : 0;
+
+      // Печалба при 1 единица залог (прост ROI ориентир)
+      let staked = 0, returned = 0;
+      for (const h of hist) {
+        if (h.pick_won === null) continue;
+        staked += 1;
+        if (h.pick_won && h.pick_odds) returned += Number(h.pick_odds);
+      }
+      const roi = staked ? Math.round(((returned - staked) / staked) * 1000) / 10 : 0;
+
+      // Разбивка по пазар
+      const byMarket = {};
+      for (const h of hist) {
+        if (h.pick_won === null) continue;
+        const k = h.pick_code || '?';
+        byMarket[k] ||= { w: 0, t: 0 };
+        byMarket[k].t++;
+        if (h.pick_won) byMarket[k].w++;
+      }
+
+      const stats = {
+        wins, losses, total, hitRate, roi,
+        byMarket,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await upsertFile('content/stats.json', JSON.stringify(stats, null, 2));
+      console.log(`\nstats.json → ${wins}W-${losses}L (${hitRate}% hit, ROI ${roi}%)`);
+    }
+  } catch (e) {
+    console.warn('stats.json skip:', e.message);
+  }
+
   console.log('\n── Publisher Report ──────────────────');
   console.log(`Created:   ${created}`);
   console.log(`Updated:   ${updated}`);
