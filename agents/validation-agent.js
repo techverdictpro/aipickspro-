@@ -46,7 +46,7 @@ async function run() {
   // Only articles whose match has finished and aren't validated yet
   const { data: arts, error } = await supabase
     .from('articles')
-    .select('id, pick_code, matches!inner(external_id, match_date, home_team, away_team)')
+    .select('id, pick_code, pick_odds, league, sport, matches!inner(external_id, match_date, home_team, away_team)')
     .lt('matches.match_date', new Date().toISOString())
     .is('validated_at', null)
     .not('pick_code', 'is', null);
@@ -99,6 +99,25 @@ async function run() {
     }).eq('id', art.id);
 
     if (upErr) { console.error(`  ! update: ${upErr.message}`); failed++; continue; }
+
+    // ── Записваме в ВЕЧНАТА история (за дългосрочна статистика) ──
+    // upsert по external_id → не се дублира, ако мач се валидира пак
+    const { error: histErr } = await supabase
+      .from('prediction_history')
+      .upsert({
+        external_id: art.matches.external_id,
+        home_team:   art.matches.home_team,
+        away_team:   art.matches.away_team,
+        league:      art.league || null,
+        sport:       art.sport || 'football',
+        pick_code:   art.pick_code,
+        pick_odds:   art.pick_odds || null,
+        pick_won:    won,
+        home_score:  hs,
+        away_score:  as_,
+        match_date:  art.matches.match_date,
+      }, { onConflict: 'external_id' });
+    if (histErr) console.warn(`  ! history: ${histErr.message}`);
 
     validated++;
     if (won) wins++; else losses++;
