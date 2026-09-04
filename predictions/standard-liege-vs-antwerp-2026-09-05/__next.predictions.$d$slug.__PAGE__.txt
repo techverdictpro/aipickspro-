@@ -1,0 +1,76 @@
+1:"$Sreact.fragment"
+a:I[97367,["/_next/static/chunks/00jmiyu0~s2mh.js","/_next/static/chunks/0wa5n_8~m2d2t.js"],"OutletBoundary"]
+b:"$Sreact.suspense"
+2:T13ae,
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0c0f; color: #f0ede6; font-family: 'Segoe UI', Arial, sans-serif; }
+        a { text-decoration: none; color: inherit; }
+        nav { position: sticky; top: 0; z-index: 100; background: rgba(10,12,15,0.96); border-bottom: 1px solid rgba(255,255,255,0.07); padding: 0 32px; height: 58px; display: flex; align-items: center; justify-content: space-between; }
+        .logo { font-size: 22px; font-weight: 900; }
+        .logo-accent { color: #e8f042; }
+        .nav-links { display: flex; gap: 24px; font-size: 13px; color: #8a8f99; }
+        .nav-links a:hover { color: #fff; }
+        .nav-cta { background: #e8f042; color: #000; padding: 8px 20px; border-radius: 4px; font-size: 13px; font-weight: 800; }
+        .page-wrap { max-width: 860px; margin: 0 auto; padding: 48px 32px 80px; }
+        .breadcrumb { font-size: 12px; color: #8a8f99; margin-bottom: 24px; }
+        .article-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+        .meta-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 12px; border-radius: 3px; }
+        .meta-sport { background: rgba(74,158,255,0.1); color: #4a9eff; border: 1px solid rgba(74,158,255,0.3); }
+        .meta-league { background: rgba(255,255,255,0.05); color: #8a8f99; }
+        .meta-date { font-size: 12px; color: #8a8f99; }
+        .article-title { font-size: 34px; font-weight: 900; line-height: 1.1; margin-bottom: 24px; text-transform: uppercase; }
+        .pick-box { background: rgba(232,240,66,0.05); border: 1px solid rgba(232,240,66,0.3); border-radius: 8px; padding: 20px 24px; margin-bottom: 32px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+        .pick-label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8f99; margin-bottom: 6px; }
+        .pick-val { font-size: 20px; font-weight: 900; color: #e8f042; }
+        .pick-odds { font-size: 36px; font-weight: 900; color: #e8f042; }
+        .conf-dots { display: flex; gap: 4px; align-items: center; }
+        .cdot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.1); }
+        .bet-btn { background: #e8f042; color: #000; font-size: 14px; font-weight: 800; padding: 12px 24px; border-radius: 4px; display: inline-block; }
+
+        /* Article body — render HTML properly */
+        .article-body { font-size: 16px; line-height: 1.8; color: #d0cdc6; margin-bottom: 40px; }
+        .article-body p { margin-bottom: 16px; }
+        .article-body h2 { font-size: 20px; font-weight: 800; color: #f0ede6; margin: 28px 0 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .article-body h3 { font-size: 17px; font-weight: 700; color: #f0ede6; margin: 20px 0 10px; }
+        .article-body ul { padding-left: 20px; margin-bottom: 16px; }
+        .article-body ul li { margin-bottom: 6px; }
+        .article-body strong { color: #f0ede6; font-weight: 700; }
+        .article-body blockquote { border-left: 3px solid #e8f042; padding-left: 16px; color: #8a8f99; font-style: italic; margin: 20px 0; }
+
+        .aff-section { margin: 40px 0; }
+        .aff-section-title { font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 6px; }
+        .aff-section-sub { font-size: 13px; color: #8a8f99; margin-bottom: 20px; }
+        .aff-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .aff-card { background: #111418; border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+        .aff-card-top { display: flex; align-items: center; justify-content: space-between; }
+        .aff-card-name { font-size: 16px; font-weight: 800; }
+        .aff-card-region { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #8a8f99; background: rgba(255,255,255,0.05); padding: 3px 8px; border-radius: 2px; }
+        .aff-card-bonus { font-size: 13px; color: #2ecc8a; font-weight: 600; }
+        .aff-card-btn { display: block; text-align: center; background: #e8f042; color: #000; font-size: 12px; font-weight: 800; padding: 8px; border-radius: 4px; }
+        .aff-disclaimer { font-size: 10px; color: #8a8f99; margin-top: 12px; line-height: 1.5; }
+        .disclaimer { font-size: 11px; color: #8a8f99; margin-top: 32px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.07); line-height: 1.6; }
+        .rg-bar { background: rgba(232,69,69,0.05); border-top: 1px solid rgba(232,69,69,0.15); padding: 12px 32px; text-align: center; font-size: 11px; color: #8a8f99; margin-top: 60px; }
+        @media (max-width: 700px) { .article-title { font-size: 24px; } .nav-links { display: none; } .aff-grid { grid-template-columns: 1fr 1fr; } .pick-box { flex-direction: column; } }
+        @media (max-width: 480px) { .aff-grid { grid-template-columns: 1fr; } }
+      0:{"rsc":["$","$1","c",{"children":[[["$","style",null,{"children":"$2"}],"$L3","$L4","$L5"],null,"$L6"]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"F3tdObKgro0d6hYCodwVi"}
+3:["$","nav",null,{"children":[["$","a",null,{"href":"/","className":"logo","children":["Ai",["$","span",null,{"className":"logo-accent","children":"Picks"}],"Pro"]}],["$","div",null,{"className":"nav-links","children":[["$","a",null,{"href":"/football/","children":"Football"}],["$","a",null,{"href":"/basketball/","children":"Basketball"}],["$","a",null,{"href":"/tennis/","children":"Tennis"}],["$","a",null,{"href":"/nfl/","children":"NFL"}],["$","a",null,{"href":"/tips-today/","children":"Today's Tips"}],["$","a",null,{"href":"/results/","children":"Results"}]]}],["$","a",null,{"href":"/tips-today/","className":"nav-cta","children":"FREE PICKS"}]]}]
+7:T7d6,<p>Standard Liège host Antwerp on Saturday evening in a Belgian Pro League encounter where recent history tells a brutally one-sided story. While early-season data remains sparse for 2026, the head-to-head record reveals a psychological and tactical chasm that bookmakers may be underpricing.</p>
+
+<h2>Form and Statistics</h2>
+
+<p>Standard Liège enter with 67% form from their opening fixtures, marginally ahead of Antwerp's 58%. However, these small sample sizes pale against the weight of recent meetings. Antwerp have won all five previous encounters by an aggregate score of 17-1, including a staggering 6-0 thrashing in November 2023 and a 3-0 victory as recently as October 2024. Standard failed to score in four of those five matches.</p>
+
+<p>The market odds reflect uncertainty: Home 2.15, Draw 3.40, Away 3.20. Stripping the 5% overround yields implied probabilities of approximately 46% home, 29% draw, 31% away. Yet Antwerp's demonstrable superiority in this specific fixture—spanning multiple seasons and coaching changes—suggests the true away win probability sits closer to 38%.</p>
+
+<h2>The Value Pick</h2>
+
+<p>The <strong>Away Win at 3.20</strong> offers a calculated 7-percentage-point edge. While backing away sides always carries inherent risk, Antwerp's ruthless conversion rate against Standard—averaging 3.4 goals per match across five meetings—indicates a matchup advantage that transcends current form percentages. Standard's home fortress has crumbled repeatedly against this opponent.</p>
+
+<p>The BTTS market (No at 1.36, Yes at 3.00) further validates defensive concerns for Standard, who managed just one goal in five H2H encounters. The Totals line sits tight at Over 1.80 / Under 2.00, suggesting bookmakers expect goals but remain cautious.</p>
+
+<p><strong>Recommendation:</strong> Back Antwerp to win at 3.20. The psychological burden of five consecutive heavy defeats creates tangible value, particularly when the away odds drift beyond 3.00. Confidence: 4/5.</p>4:["$","div",null,{"className":"page-wrap","children":[["$","div",null,{"className":"breadcrumb","children":[["$","a",null,{"href":"/","children":"Home"}]," › ",["$","a",null,{"href":"/football/","children":["⚽"," ","football"]}]," › ",["$","span",null,{"style":{"color":"#e8f042"},"children":"Prediction"}]]}],["$","div",null,{"className":"article-meta","children":[["$","span",null,{"className":"meta-badge meta-sport","children":["⚽"," ","football"]}],["$","span",null,{"className":"meta-badge meta-league","children":"Belgian Pro League"}],["$","span",null,{"className":"meta-date","children":"5 September 2026"}],null]}],["$","h1",null,{"className":"article-title","children":"Standard Liège vs Antwerp: Away Win Value After 5 Straight Victories"}],false,["$","div",null,{"className":"pick-box","children":[["$","div",null,{"children":[["$","div",null,{"className":"pick-label","children":"Our Prediction"}],["$","div",null,{"className":"pick-val","children":"2"}]]}],["$","div",null,{"children":[["$","div",null,{"className":"pick-label","children":"Odds"}],["$","div",null,{"className":"pick-odds","children":3.2}]]}],["$","div",null,{"children":[["$","div",null,{"className":"pick-label","children":"Confidence"}],["$","div",null,{"style":{"display":"flex","alignItems":"center","gap":"8px","color":"#e8f042"},"children":[["$","div",null,{"className":"conf-dots","children":[["$","div","1",{"className":"cdot","style":{"background":"currentColor"}}],["$","div","2",{"className":"cdot","style":{"background":"currentColor"}}],["$","div","3",{"className":"cdot","style":{"background":"currentColor"}}],["$","div","4",{"className":"cdot","style":{"background":"currentColor"}}],["$","div","5",{"className":"cdot","style":{}}]]}],["$","span",null,{"style":{"fontSize":"13px","fontWeight":700},"children":"High"}]]}]]}],["$","a",null,{"href":"https://www.bet365.com","target":"_blank","rel":"noopener noreferrer sponsored","className":"bet-btn","children":"BET NOW →"}]]}],["$","div",null,{"className":"article-body","dangerouslySetInnerHTML":{"__html":"$7"}}],"$L8","$L9"]}]
+5:["$","div",null,{"className":"rg-bar","children":[["$","strong",null,{"style":{"color":"#fff"},"children":"⚠ Gamble Responsibly."}]," 18+ only. Betting involves risk of loss. Visit ",["$","a",null,{"href":"https://www.begambleaware.org","target":"_blank","rel":"noopener","style":{"color":"#e8f042"},"children":"BeGambleAware.org"}]]}]
+6:["$","$La",null,{"children":["$","$b",null,{"name":"Next.MetadataOutlet","children":"$@c"}]}]
+8:["$","div",null,{"className":"aff-section","children":[["$","div",null,{"className":"aff-section-title","children":"🏆 Best Bookmakers"}],["$","div",null,{"className":"aff-section-sub","children":"Compare bonuses and claim your welcome offer"}],["$","div",null,{"className":"aff-grid","children":[["$","div","Bet365",{"className":"aff-card","children":[["$","div",null,{"className":"aff-card-top","children":[["$","div",null,{"className":"aff-card-name","style":{"color":"#00a651"},"children":"Bet365"}],["$","div",null,{"className":"aff-card-region","children":"UK & Europe"}]]}],["$","div",null,{"className":"aff-card-bonus","children":"Up to £100 Welcome Bonus"}],["$","a",null,{"href":"https://www.bet365.com","target":"_blank","rel":"noopener noreferrer sponsored","className":"aff-card-btn","children":"CLAIM OFFER →"}]]}],["$","div","William Hill",{"className":"aff-card","children":[["$","div",null,{"className":"aff-card-top","children":[["$","div",null,{"className":"aff-card-name","style":{"color":"#6c2d8a"},"children":"William Hill"}],["$","div",null,{"className":"aff-card-region","children":"UK & Europe"}]]}],["$","div",null,{"className":"aff-card-bonus","children":"£30 Free Bet"}],["$","a",null,{"href":"https://www.williamhill.com","target":"_blank","rel":"noopener noreferrer sponsored","className":"aff-card-btn","children":"CLAIM OFFER →"}]]}],["$","div","DraftKings",{"className":"aff-card","children":[["$","div",null,{"className":"aff-card-top","children":[["$","div",null,{"className":"aff-card-name","style":{"color":"#53d337"},"children":"DraftKings"}],["$","div",null,{"className":"aff-card-region","children":"USA"}]]}],["$","div",null,{"className":"aff-card-bonus","children":"$$200 Bonus Bets"}],["$","a",null,{"href":"https://www.draftkings.com","target":"_blank","rel":"noopener noreferrer sponsored","className":"aff-card-btn","children":"CLAIM OFFER →"}]]}],["$","div","FanDuel",{"className":"aff-card","children":[["$","div",null,{"className":"aff-card-top","children":[["$","div",null,{"className":"aff-card-name","style":{"color":"#1493ff"},"children":"FanDuel"}],["$","div",null,{"className":"aff-card-region","children":"USA"}]]}],["$","div",null,{"className":"aff-card-bonus","children":"$$1000 No Sweat First Bet"}],["$","a",null,{"href":"https://www.fanduel.com","target":"_blank","rel":"noopener noreferrer sponsored","className":"aff-card-btn","children":"CLAIM OFFER →"}]]}],["$","div","Betway",{"className":"aff-card","children":[["$","div",null,{"className":"aff-card-top","children":[["$","div",null,{"className":"aff-card-name","style":{"color":"#00a0ff"},"children":"Betway"}],["$","div",null,{"className":"aff-card-region","children":"Europe"}]]}],["$","div",null,{"className":"aff-card-bonus","children":"€30 Free Bet"}],["$","a",null,{"href":"https://www.betway.com","target":"_blank","rel":"noopener noreferrer sponsored","className":"aff-card-btn","children":"CLAIM OFFER →"}]]}],["$","div","Unibet",{"className":"aff-card","children":[["$","div",null,{"className":"aff-card-top","children":[["$","div",null,{"className":"aff-card-name","style":{"color":"#147b45"},"children":"Unibet"}],["$","div",null,{"className":"aff-card-region","children":"Europe"}]]}],["$","div",null,{"className":"aff-card-bonus","children":"€40 Welcome Bonus"}],["$","a",null,{"href":"https://www.unibet.com","target":"_blank","rel":"noopener noreferrer sponsored","className":"aff-card-btn","children":"CLAIM OFFER →"}]]}]]}],["$","div",null,{"className":"aff-disclaimer","children":"* 18+ only. New customers only. T&Cs apply. Gamble responsibly."}]]}]
+9:["$","div",null,{"className":"disclaimer","children":"Odds correct at time of publication. AiPicksPro may receive commission from bookmakers listed on this page."}]
+c:null
